@@ -1,0 +1,2193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador Inteligente do ENEM</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ===== VARIÁVEIS E RESET ===== */
+  :root {
+    --azul: #4A90E2;
+    --azul-claro: #74B9FF;
+    --azul-palido: #EBF4FF;
+    --amarelo: #FDCB6E;
+    --amarelo-claro: #FFF3CD;
+    --verde: #00B894;
+    --verde-claro: #D4EFEA;
+    --roxo: #A29BFE;
+    --roxo-claro: #F0EEFF;
+    --laranja: #FF7675;
+    --laranja-claro: #FFE8E8;
+    --rosa: #FD79A8;
+    --branco: #FFFFFF;
+    --cinza-claro: #F8F9FA;
+    --texto: #2D3436;
+    --texto-suave: #636E72;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: #F0F6FF;
+    color: var(--texto);
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ===== TELAS ===== */
+  .screen {
+    display: none;
+    min-height: 100vh;
+    animation: fadeIn 0.5s ease;
+  }
+  .screen.active { display: flex; flex-direction: column; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== BOTÕES ===== */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 16px 36px; border-radius: 50px; border: none;
+    font-family: 'Nunito', sans-serif; font-size: 1.1rem; font-weight: 800;
+    cursor: pointer; transition: all 0.3s ease;
+    text-decoration: none; position: relative; overflow: hidden;
+  }
+  .btn::after {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    width: 0; height: 0; background: rgba(255,255,255,0.25);
+    border-radius: 50%; transform: translate(-50%,-50%);
+    transition: width 0.4s ease, height 0.4s ease;
+  }
+  .btn:hover::after { width: 300px; height: 300px; }
+  .btn:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,0.15); }
+  .btn:active { transform: translateY(0); }
+
+  .btn-primary { background: linear-gradient(135deg, var(--azul), var(--azul-claro)); color: white; }
+  .btn-success { background: linear-gradient(135deg, var(--verde), #55EFC4); color: white; }
+  .btn-warning { background: linear-gradient(135deg, var(--amarelo), #FFEAA7); color: var(--texto); }
+  .btn-danger  { background: linear-gradient(135deg, var(--laranja), var(--rosa)); color: white; }
+  .btn-roxo    { background: linear-gradient(135deg, var(--roxo), #C9B9FF); color: white; }
+  .btn-lg { padding: 20px 50px; font-size: 1.3rem; }
+  .btn-sm { padding: 10px 22px; font-size: 0.9rem; }
+
+  /* ===== BOTÃO VOLTAR ===== */
+  .btn-back {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--azul-palido); border: none; border-radius: 50px;
+    padding: 7px 16px; cursor: pointer; font-family: 'Nunito', sans-serif;
+    font-size: 0.88rem; font-weight: 800; color: var(--azul);
+    transition: all 0.25s ease;
+  }
+  .btn-back:hover { background: var(--azul); color: white; transform: translateX(-3px); }
+  .btn-back .arrow { font-size: 1rem; transition: transform 0.25s; }
+  .btn-back:hover .arrow { transform: translateX(-3px); }
+
+  /* ===== HEADER ===== */
+  .header {
+    background: white; padding: 14px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 2px 20px rgba(74,144,226,0.12);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo {
+    font-family: 'Baloo 2', cursive; font-weight: 800; font-size: 1.5rem;
+    background: linear-gradient(135deg, var(--azul), var(--roxo));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .badge {
+    background: linear-gradient(135deg, var(--verde), #55EFC4);
+    color: white; padding: 6px 16px; border-radius: 20px; font-size: 0.8rem; font-weight: 700;
+  }
+
+  /* ===== HERO (PÁGINA INICIAL) ===== */
+  #home { background: linear-gradient(160deg, #EBF4FF 0%, #F0EEFF 50%, #E8FDF5 100%); position: relative; }
+
+  .hero-bg {
+    position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0;
+  }
+  .blob {
+    position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.35;
+    animation: float 6s ease-in-out infinite;
+  }
+  .blob-1 { width: 400px; height: 400px; background: var(--azul-claro); top: -100px; right: -100px; animation-delay: 0s; }
+  .blob-2 { width: 300px; height: 300px; background: var(--amarelo); bottom: 50px; left: -80px; animation-delay: 2s; }
+  .blob-3 { width: 250px; height: 250px; background: var(--roxo); top: 40%; left: 40%; animation-delay: 4s; }
+
+  @keyframes float {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(20px, -20px) scale(1.05); }
+  }
+
+  .hero-content {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; text-align: center;
+    padding: 80px 24px; flex: 1;
+    gap: 24px;
+  }
+
+  .hero-emoji { font-size: 4.5rem; animation: bounce 2s ease-in-out infinite; }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+  }
+
+  .hero-title {
+    font-family: 'Baloo 2', cursive; font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 800; line-height: 1.15;
+    background: linear-gradient(135deg, var(--azul) 0%, var(--roxo) 50%, var(--rosa) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  .hero-sub {
+    font-size: clamp(1rem, 2.5vw, 1.25rem); color: var(--texto-suave);
+    max-width: 560px; line-height: 1.7; font-weight: 600;
+  }
+
+  .features-row {
+    display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; max-width: 700px;
+  }
+  .feat-chip {
+    background: white; border-radius: 50px; padding: 10px 20px;
+    font-size: 0.9rem; font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    animation: popIn 0.5s ease backwards;
+  }
+  .feat-chip:nth-child(1) { animation-delay: 0.1s; }
+  .feat-chip:nth-child(2) { animation-delay: 0.2s; }
+  .feat-chip:nth-child(3) { animation-delay: 0.3s; }
+  .feat-chip:nth-child(4) { animation-delay: 0.4s; }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  /* ===== MATÉRIAS CHIPS ===== */
+  .subjects-strip {
+    display: flex; justify-content: center; flex-wrap: wrap; gap: 10px;
+    padding: 24px; background: white;
+    box-shadow: 0 -2px 20px rgba(0,0,0,0.05);
+  }
+  .subj-chip {
+    padding: 8px 18px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;
+  }
+  .subj-mat { background: var(--azul-palido); color: var(--azul); }
+  .subj-por { background: var(--amarelo-claro); color: #B7860B; }
+  .subj-nat { background: var(--verde-claro); color: #007A60; }
+  .subj-hum { background: var(--roxo-claro); color: #6C5CE7; }
+
+  /* ===== PAYMENT SCREEN ===== */
+  #payment { background: linear-gradient(160deg, #FFF8E1 0%, #FFF3E0 100%); align-items: center; justify-content: center; padding: 40px 20px; }
+
+  .payment-card {
+    background: white; border-radius: 28px; max-width: 480px; width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.12); overflow: hidden;
+    animation: slideUp 0.5s ease;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .pay-header {
+    background: linear-gradient(135deg, var(--azul), var(--roxo));
+    padding: 30px 28px; text-align: center; color: white;
+  }
+  .pay-header h2 { font-family: 'Baloo 2', cursive; font-size: 1.6rem; font-weight: 800; }
+  .pay-header p { opacity: 0.9; font-size: 0.95rem; margin-top: 6px; }
+
+  .pay-body { padding: 28px; }
+
+  .benefit-list { list-style: none; margin-bottom: 24px; }
+  .benefit-list li {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid #F0F0F0;
+    font-size: 0.95rem; font-weight: 600;
+  }
+  .benefit-list li:last-child { border: none; }
+  .benefit-list .icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0;
+  }
+
+  .price-box {
+    background: linear-gradient(135deg, var(--verde-claro), #B2F0E0);
+    border-radius: 16px; padding: 20px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .price-label { font-size: 0.9rem; color: #007A60; font-weight: 700; }
+  .price-value { font-family: 'Baloo 2', cursive; font-size: 2.2rem; font-weight: 800; color: var(--verde); }
+
+  .pix-box {
+    border: 2px dashed var(--azul-claro); border-radius: 16px; padding: 20px;
+    text-align: center; margin-bottom: 20px;
+  }
+  .pix-code {
+    background: var(--azul-palido); border-radius: 8px;
+    padding: 12px; font-family: monospace; font-size: 0.8rem;
+    word-break: break-all; color: var(--azul); margin-top: 10px;
+    letter-spacing: 1px;
+  }
+
+  /* ===== PAYMENT SUCCESS ===== */
+  .pay-success-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.95);
+    z-index: 999; align-items: center; justify-content: center; flex-direction: column; gap: 20px;
+    animation: fadeIn 0.3s ease;
+  }
+  .pay-success-overlay.show { display: flex; }
+  .checkmark-circle {
+    width: 100px; height: 100px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--verde), #55EFC4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 3rem; animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  @keyframes scaleIn { from { transform: scale(0); } to { transform: scale(1); } }
+  .pay-success-overlay h2 { font-family: 'Baloo 2', cursive; font-size: 2rem; color: var(--verde); }
+  .pay-success-overlay p { color: var(--texto-suave); font-size: 1.1rem; }
+
+  /* ===== STUDY SCREEN ===== */
+  #study { background: #F8F9FF; }
+
+  .study-content { padding: 30px 20px; max-width: 800px; margin: 0 auto; width: 100%; }
+  .study-title {
+    font-family: 'Baloo 2', cursive; font-size: 1.8rem; font-weight: 800;
+    text-align: center; margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--azul), var(--roxo));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .study-sub { text-align: center; color: var(--texto-suave); font-size: 1rem; margin-bottom: 30px; font-weight: 600; }
+
+  .study-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-bottom: 30px; }
+
+  .study-card {
+    background: white; border-radius: 20px; padding: 22px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+    border-top: 5px solid; transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .study-card:hover { transform: translateY(-4px); box-shadow: 0 12px 35px rgba(0,0,0,0.12); }
+  .study-card.mat { border-color: var(--azul); }
+  .study-card.por { border-color: var(--amarelo); }
+  .study-card.nat { border-color: var(--verde); }
+  .study-card.hum { border-color: var(--roxo); }
+
+  /* Estado selecionado — fundo verde com borda verde */
+  .study-card.selected {
+    background: linear-gradient(135deg, #E8FDF5, #D4EFEA) !important;
+    border-color: var(--verde) !important;
+    box-shadow: 0 8px 30px rgba(0,184,148,0.25);
+    transform: translateY(-4px);
+  }
+  .study-card.selected .study-card-header h3 { color: #007A60; }
+  .study-card.selected .study-icon {
+    background: var(--verde) !important;
+  }
+  .study-card.selected::after {
+    content: '✓ Selecionada';
+    display: inline-block;
+    margin-top: 10px;
+    background: var(--verde);
+    color: white;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    animation: popIn 0.3s cubic-bezier(0.175,0.885,0.32,1.275);
+  }
+
+  /* Card especial: Todas as Matérias */
+  .study-card.all {
+    border-color: var(--roxo);
+    background: linear-gradient(135deg, #F8F6FF, #F0EEFF);
+    grid-column: 1 / -1;
+  }
+  .study-card.all .study-icon { background: var(--roxo-claro); }
+  .study-card.all.selected {
+    background: linear-gradient(135deg, #E8FDF5, #D0F5EA) !important;
+    border-color: var(--verde) !important;
+  }
+  .study-card.all.selected::after { content: '✓ Selecionada — Todas as Matérias'; }
+
+  /* Banner informativo de pontuação */
+  .score-info-banner {
+    background: linear-gradient(135deg, #FFF8E1, #FFF3CD);
+    border: 2px solid var(--amarelo);
+    border-radius: 16px;
+    padding: 14px 20px;
+    margin-bottom: 22px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .score-info-banner .info-icon { font-size: 1.5rem; flex-shrink: 0; margin-top: 1px; }
+  .score-info-banner .info-text { font-size: 0.88rem; font-weight: 700; color: #7A5C00; line-height: 1.6; }
+  .score-info-banner .info-text strong { color: #5A3E00; font-size: 0.92rem; }
+
+  .study-card-header {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+  }
+  .study-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0;
+  }
+  .mat .study-icon { background: var(--azul-palido); }
+  .por .study-icon { background: var(--amarelo-claro); }
+  .nat .study-icon { background: var(--verde-claro); }
+  .hum .study-icon { background: var(--roxo-claro); }
+
+  .study-card h3 { font-size: 1.05rem; font-weight: 800; }
+  .study-card p { font-size: 0.88rem; color: var(--texto-suave); line-height: 1.6; font-weight: 600; }
+
+  .start-row { display: flex; justify-content: center; margin-top: 10px; }
+
+  /* ===== QUIZ SCREEN ===== */
+  #quiz { background: #F0F6FF; }
+
+  .quiz-content { padding: 24px 20px; max-width: 760px; margin: 0 auto; width: 100%; flex: 1; }
+
+  .quiz-top {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+  }
+  .question-counter { font-weight: 800; font-size: 1rem; color: var(--azul); }
+  .subject-tag {
+    padding: 6px 16px; border-radius: 20px; font-size: 0.82rem; font-weight: 700;
+  }
+
+  .progress-bar-wrap { background: #E0ECFF; border-radius: 50px; height: 10px; margin-bottom: 28px; overflow: hidden; }
+  .progress-bar-fill {
+    height: 100%; border-radius: 50px;
+    background: linear-gradient(90deg, var(--azul), var(--roxo));
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .question-card {
+    background: white; border-radius: 24px; padding: 30px;
+    box-shadow: 0 8px 30px rgba(74,144,226,0.12); margin-bottom: 20px;
+    animation: slideIn 0.4s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(30px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .question-enunciado {
+    font-size: 1.05rem; line-height: 1.75; color: var(--texto);
+    margin-bottom: 24px; font-weight: 600;
+  }
+  .question-enunciado .context {
+    background: var(--azul-palido); border-left: 4px solid var(--azul);
+    padding: 14px 16px; border-radius: 8px; margin-bottom: 16px;
+    font-size: 0.95rem; color: var(--texto-suave); font-style: italic; font-weight: 600;
+  }
+
+  .alternatives { display: flex; flex-direction: column; gap: 12px; }
+
+  .alt-btn {
+    display: flex; align-items: flex-start; gap: 14px;
+    background: var(--cinza-claro); border: 2.5px solid transparent;
+    border-radius: 14px; padding: 16px 18px; cursor: pointer;
+    transition: all 0.25s ease; text-align: left;
+    font-family: 'Nunito', sans-serif; font-size: 0.95rem; font-weight: 600;
+  }
+  .alt-btn:hover { border-color: var(--azul-claro); background: var(--azul-palido); transform: translateX(4px); }
+  .alt-btn.selected { border-color: var(--azul); background: var(--azul-palido); }
+  .alt-btn.correct { border-color: var(--verde); background: var(--verde-claro); }
+  .alt-btn.wrong { border-color: var(--laranja); background: var(--laranja-claro); }
+
+  .alt-letter {
+    width: 32px; height: 32px; border-radius: 50%; background: white;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 0.9rem; flex-shrink: 0;
+    border: 2px solid #D0D9E8; transition: all 0.25s;
+  }
+  .selected .alt-letter { background: var(--azul); color: white; border-color: var(--azul); }
+  .correct .alt-letter  { background: var(--verde); color: white; border-color: var(--verde); }
+  .wrong .alt-letter    { background: var(--laranja); color: white; border-color: var(--laranja); }
+
+  .next-row { display: flex; justify-content: flex-end; }
+  .btn-next { background: linear-gradient(135deg, var(--azul), #6CB4FF); color: white; }
+  .btn-next:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-next:disabled::after { display: none; }
+
+  /* ===== RESULT SCREEN ===== */
+  #result { background: linear-gradient(160deg, #EBF4FF 0%, #F0EEFF 100%); align-items: center; }
+
+  .result-content {
+    padding: 40px 20px; max-width: 680px; margin: 0 auto; width: 100%;
+    display: flex; flex-direction: column; align-items: center; gap: 28px;
+  }
+
+  .result-emoji { font-size: 4rem; animation: bounce 2s ease-in-out infinite; }
+
+  .result-title {
+    font-family: 'Baloo 2', cursive; font-size: 1.8rem; font-weight: 800; text-align: center;
+    background: linear-gradient(135deg, var(--azul), var(--roxo));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  .score-circle {
+    width: 160px; height: 160px; border-radius: 50%;
+    background: white; box-shadow: 0 10px 40px rgba(74,144,226,0.2);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    animation: scaleIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+  }
+  .score-circle::before {
+    content: ''; position: absolute; inset: -6px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--azul), var(--roxo));
+    z-index: -1;
+  }
+  .score-number { font-family: 'Baloo 2', cursive; font-size: 3.2rem; font-weight: 800; color: var(--azul); line-height: 1; }
+  .score-label  { font-size: 0.8rem; color: var(--texto-suave); font-weight: 700; }
+
+  .stats-row {
+    display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; width: 100%;
+  }
+  .stat-box {
+    background: white; border-radius: 18px; padding: 18px 24px; text-align: center; flex: 1; min-width: 120px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+  }
+  .stat-num { font-family: 'Baloo 2', cursive; font-size: 2rem; font-weight: 800; }
+  .stat-lbl { font-size: 0.82rem; color: var(--texto-suave); font-weight: 600; }
+  .stat-box.green .stat-num { color: var(--verde); }
+  .stat-box.red   .stat-num { color: var(--laranja); }
+  .stat-box.blue  .stat-num { color: var(--azul); }
+
+  .motivational {
+    background: white; border-radius: 20px; padding: 20px 28px; text-align: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.07); max-width: 440px; width: 100%;
+    border-top: 4px solid var(--amarelo);
+    font-size: 1rem; font-weight: 700; color: var(--texto); line-height: 1.6;
+  }
+
+  /* ===== CHART ===== */
+  .chart-card {
+    background: white; border-radius: 20px; padding: 22px 24px; width: 100%;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+  }
+  .chart-title { font-weight: 800; font-size: 1rem; margin-bottom: 16px; color: var(--texto); }
+  .chart-bars { display: flex; gap: 10px; align-items: flex-end; height: 100px; }
+  .chart-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .chart-bar {
+    width: 100%; border-radius: 8px 8px 0 0;
+    transition: height 1s cubic-bezier(0.4, 0, 0.2, 1);
+    min-height: 4px;
+  }
+  .chart-bar-lbl { font-size: 0.72rem; font-weight: 700; color: var(--texto-suave); text-align: center; }
+  .chart-pct { font-size: 0.78rem; font-weight: 800; }
+
+  /* ===== LOADER ===== */
+  .processing-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(255,255,255,0.96); z-index: 999;
+    align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+  }
+  .processing-overlay.show { display: flex; }
+  .spinner {
+    width: 60px; height: 60px; border-radius: 50%;
+    border: 5px solid var(--azul-palido); border-top-color: var(--azul);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== GABARITO ===== */
+  .gabarito-card {
+    background: white; border-radius: 20px; padding: 24px 24px 28px;
+    width: 100%; box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+  }
+  .gabarito-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 18px; flex-wrap: wrap; gap: 10px;
+  }
+  .gabarito-title { font-weight: 800; font-size: 1.05rem; color: var(--texto); }
+  .gabarito-legend {
+    display: flex; gap: 14px; font-size: 0.78rem; font-weight: 700;
+  }
+  .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+  .gabarito-list { display: flex; flex-direction: column; gap: 10px; }
+  .gabarito-item { border-radius: 14px; padding: 14px 16px; border-left: 5px solid; animation: fadeIn 0.4s ease backwards; }
+  .gabarito-item.acerto { background: #F0FDF8; border-color: var(--verde); }
+  .gabarito-item.erro   { background: #FFF5F5; border-color: var(--laranja); }
+  .gab-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .gab-num { font-size: 0.75rem; font-weight: 800; color: var(--texto-suave); white-space: nowrap; padding-top: 2px; }
+  .gab-enunciado { flex: 1; font-size: 0.85rem; font-weight: 600; color: var(--texto); line-height: 1.5; }
+  .gab-badge { flex-shrink: 0; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; }
+  .gab-badge.ok  { background: var(--verde-claro); color: #007A60; }
+  .gab-badge.err { background: var(--laranja-claro); color: #C0392B; }
+  .gab-respostas { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+  .gab-resp { display: flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; }
+  .gab-resp.certa  { background: var(--verde-claro); color: #007A60; }
+  .gab-resp.errada { background: var(--laranja-claro); color: #C0392B; }
+  .gab-resp.neutra { background: var(--azul-palido); color: var(--azul); }
+  .gab-resp .letter-badge { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 900; }
+  .gab-resp.certa  .letter-badge { background: var(--verde); color: white; }
+  .gab-resp.errada .letter-badge { background: var(--laranja); color: white; }
+  .gab-resp.neutra .letter-badge { background: var(--azul); color: white; }
+  .gab-materia-tag { font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 10px; margin-bottom: 6px; display: inline-block; }
+
+  /* ===== BANNER DE BLOCO DE MATÉRIA (modo todas) ===== */
+  .subject-block-banner {
+    display: none;
+    border-radius: 16px; padding: 14px 18px; margin-bottom: 18px;
+    align-items: center; gap: 14px;
+    animation: fadeIn 0.4s ease;
+  }
+  .subject-block-banner.visible { display: flex; }
+  .sbb-icon { font-size: 2rem; flex-shrink: 0; }
+  .sbb-info { flex: 1; }
+  .sbb-label { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; }
+  .sbb-name  { font-family: 'Baloo 2', cursive; font-size: 1.15rem; font-weight: 800; line-height: 1.1; }
+  .sbb-count { font-size: 0.78rem; font-weight: 700; opacity: 0.8; margin-top: 2px; }
+  .sbb-progress { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+  .sbb-pct { font-size: 0.75rem; font-weight: 800; }
+  .sbb-mini-bar { width: 60px; height: 6px; background: rgba(0,0,0,0.1); border-radius: 3px; overflow: hidden; }
+  .sbb-mini-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+
+  .sbb-mat  { background: var(--azul-palido);    color: var(--azul); }
+  .sbb-por  { background: var(--amarelo-claro);  color: #7A5C00; }
+  .sbb-nat  { background: var(--verde-claro);    color: #007A60; }
+  .sbb-hum  { background: var(--roxo-claro);     color: #6C5CE7; }
+
+  /* ===== RESPONSIVO ===== */
+  @media (max-width: 500px) {
+    .btn-lg { padding: 16px 32px; font-size: 1.1rem; }
+    .pay-body { padding: 20px; }
+    .question-card { padding: 20px 16px; }
+    .question-enunciado { font-size: 0.95rem; }
+    .alt-btn { font-size: 0.88rem; padding: 14px 14px; }
+    .score-circle { width: 130px; height: 130px; }
+    .score-number { font-size: 2.6rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================================================
+     TELA 1: HOME
+=================================================== -->
+<div id="home" class="screen active">
+  <header class="header">
+    <div class="logo">📚 ENEMsim</div>
+    <span class="badge">✨ Grátis para começar</span>
+  </header>
+
+  <div class="hero-bg">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <div class="hero-content">
+    <div class="hero-emoji">🎓</div>
+
+    <h1 class="hero-title">Simulador Inteligente<br>do ENEM</h1>
+
+    <p class="hero-sub">
+      Teste seus conhecimentos com questões inspiradas nas provas reais do ENEM.
+      Treine, evolua e conquiste sua vaga!
+    </p>
+
+    <div class="features-row">
+      <div class="feat-chip">📝 45 questões</div>
+      <div class="feat-chip">⏱️ Estilo ENEM real</div>
+      <div class="feat-chip">📊 Nota de 0 a 1000</div>
+      <div class="feat-chip">🏆 Correção imediata</div>
+    </div>
+
+    <button class="btn btn-primary btn-lg" onclick="goTo('payment')">
+      🚀 Começar Simulado
+    </button>
+  </div>
+
+  <div class="subjects-strip">
+    <span class="subj-chip subj-mat">📐 Matemática</span>
+    <span class="subj-chip subj-por">📖 Português</span>
+    <span class="subj-chip subj-nat">🔬 Ciências da Natureza</span>
+    <span class="subj-chip subj-hum">🌍 Ciências Humanas</span>
+  </div>
+</div>
+
+<!-- ===================================================
+     TELA 2: PAGAMENTO
+=================================================== -->
+<div id="payment" class="screen">
+  <header class="header">
+    <button class="btn-back" onclick="goTo('home')"><span class="arrow">←</span> Voltar</button>
+    <div class="logo">📚 ENEMsim</div>
+    <div style="width:80px"></div>
+  </header>
+  <div style="padding: 40px 20px; display:flex; justify-content:center; align-items:center; flex:1; background: linear-gradient(160deg, #FFF8E1 0%, #FFF3E0 100%);">
+    <div class="payment-card">
+      <div class="pay-header">
+        <div style="font-size:2.5rem; margin-bottom:10px;">🔐</div>
+        <h2>Acesso ao Simulador Completo</h2>
+        <p>Uma vez, para sempre. Sem mensalidades!</p>
+      </div>
+
+      <div class="pay-body">
+        <ul class="benefit-list">
+          <li>
+            <div class="icon" style="background:#EBF4FF;">📝</div>
+            <div>
+              <div style="font-weight:800">45 questões estilo ENEM</div>
+              <div style="font-size:0.82rem;color:var(--texto-suave);font-weight:600">Cobrindo todas as áreas do conhecimento</div>
+            </div>
+          </li>
+          <li>
+            <div class="icon" style="background:#D4EFEA;">✅</div>
+            <div>
+              <div style="font-weight:800">Correção automática e gabarito</div>
+              <div style="font-size:0.82rem;color:var(--texto-suave);font-weight:600">Veja o que errou e por quê</div>
+            </div>
+          </li>
+          <li>
+            <div class="icon" style="background:#F0EEFF;">📊</div>
+            <div>
+              <div style="font-weight:800">Nota final simulada (0 a 1000)</div>
+              <div style="font-size:0.82rem;color:var(--texto-suave);font-weight:600">Baseada na metodologia TRI do ENEM</div>
+            </div>
+          </li>
+          <li>
+            <div class="icon" style="background:#FFF3CD;">🏆</div>
+            <div>
+              <div style="font-weight:800">Material de estudo antes da prova</div>
+              <div style="font-size:0.82rem;color:var(--texto-suave);font-weight:600">Resumos por matéria para revisar</div>
+            </div>
+          </li>
+        </ul>
+
+        <div class="price-box">
+          <div>
+            <div class="price-label">Acesso único</div>
+            <div style="font-size:0.78rem;color:#007A60;font-weight:600;text-decoration:line-through;">De R$29,90</div>
+          </div>
+          <div class="price-value">R$9,90</div>
+        </div>
+
+        <div class="pix-box">
+          <div style="font-size:1.6rem;margin-bottom:4px;">📱</div>
+          <div style="font-weight:800;font-size:1rem;margin-bottom:4px;">Pague via PIX</div>
+          <div style="font-size:0.85rem;color:var(--texto-suave);font-weight:600;">Aprovação instantânea</div>
+          <div class="pix-code">00020126580014BR.GOV.BCB.PIX0136a0e4e8d2-7f3b-4c1a-9e5f-3b2c1d0a8f7e5204000053039865802BR5910ENEMsim6009SAO PAULO62070503***6304A1B2</div>
+        </div>
+
+        <button class="btn btn-success" style="width:100%;font-size:1.1rem;padding:18px;" onclick="simulatePay()">
+          💳 Confirmar Pagamento — R$9,90
+        </button>
+
+        <div style="text-align:center;margin-top:12px;font-size:0.8rem;color:var(--texto-suave);font-weight:600;">
+          🔒 Pagamento 100% seguro • SSL criptografado
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Processing overlay -->
+<div class="processing-overlay" id="processingOverlay">
+  <div class="spinner"></div>
+  <div style="font-weight:800;font-size:1.1rem;color:var(--azul)">Processando pagamento...</div>
+</div>
+
+<!-- Success overlay -->
+<div class="pay-success-overlay" id="successOverlay">
+  <div class="checkmark-circle">✓</div>
+  <h2>Pagamento Aprovado! 🎉</h2>
+  <p>Seu acesso foi liberado com sucesso!</p>
+  <div class="spinner" style="border-top-color:var(--verde);border-color:var(--verde-claro);"></div>
+</div>
+
+
+<!-- ===================================================
+     TELA 3: ESTUDO
+=================================================== -->
+<div id="study" class="screen">
+  <header class="header">
+    <button class="btn-back" onclick="goTo('home')"><span class="arrow">←</span> Voltar</button>
+    <div class="logo">📚 ENEMsim</div>
+    <span class="badge">✅ Acesso Liberado</span>
+  </header>
+
+  <div class="study-content">
+    <h2 class="study-title">📖 Revise antes de começar!</h2>
+    <p class="study-sub">Dê uma olhada nos resumos de cada matéria e se prepare para a prova.</p>
+
+    <!-- AVISO DE PONTUAÇÃO -->
+    <div class="score-info-banner">
+      <div class="info-icon">💡</div>
+      <div class="info-text">
+        <strong>Como funciona a pontuação?</strong><br>
+        Cada matéria individual vale de <strong>0 a 1000 pontos</strong>, calculada com base nos acertos daquela área.<br>
+        Na opção <strong>"Todas as Matérias"</strong>, você responde questões de todas as áreas e recebe <strong>uma nota geral de 0 a 1000 pontos</strong> — simulando a nota real do ENEM.<br>
+        <span style="color:#007A60;font-weight:800;">👇 Selecione uma opção abaixo e clique em Iniciar!</span>
+      </div>
+    </div>
+
+    <div class="study-grid">
+      <!-- CARD: TODAS AS MATÉRIAS -->
+      <div class="study-card all" onclick="selectStudyCard(this,'all')" style="cursor:pointer" data-subject="all">
+        <div class="study-card-header">
+          <div class="study-icon" style="background:var(--roxo-claro);font-size:1.6rem">🏆</div>
+          <div>
+            <h3 style="color:#6C5CE7">Todas as Matérias</h3>
+            <div style="font-size:0.78rem;color:var(--texto-suave);font-weight:700;margin-top:2px">Nota geral + 4 notas individuais · 180 questões (45 por área)</div>
+          </div>
+        </div>
+        <p>Simule a prova completa do ENEM! <strong>45 questões por matéria</strong> — Matemática, Português, Ciências da Natureza e Ciências Humanas. Você avança por cada área em sequência e recebe <strong>uma nota geral de 0 a 1000</strong> e <strong>notas individuais por área</strong> ao final.</p>
+      </div>
+
+      <div class="study-card mat" onclick="selectStudyCard(this,'Matemática')" style="cursor:pointer" data-subject="Matemática">
+        <div class="study-card-header">
+          <div class="study-icon">📐</div>
+          <h3>Matemática</h3>
+        </div>
+        <div style="font-size:0.75rem;color:var(--azul);font-weight:800;margin-bottom:8px">Nota individual · 0 a 1000 pts · 45 questões</div>
+        <p>Foco em funções, geometria plana e espacial, probabilidade, estatística e progressões. O ENEM cobra interpretação e aplicação de fórmulas no cotidiano. Lembre-se: ler o enunciado com atenção vale mais do que decorar fórmulas!</p>
+      </div>
+
+      <div class="study-card por" onclick="selectStudyCard(this,'Língua Portuguesa')" style="cursor:pointer" data-subject="Língua Portuguesa">
+        <div class="study-card-header">
+          <div class="study-icon">📖</div>
+          <h3>Língua Portuguesa</h3>
+        </div>
+        <div style="font-size:0.75rem;color:#B7860B;font-weight:800;margin-bottom:8px">Nota individual · 0 a 1000 pts · 45 questões</div>
+        <p>Interpretação de textos é o núcleo da prova. Gêneros textuais, figuras de linguagem, coerência e coesão são muito cobrados. A redação exige dissertação argumentativa — domine a estrutura: introdução, desenvolvimento e conclusão.</p>
+      </div>
+
+      <div class="study-card nat" onclick="selectStudyCard(this,'Ciências da Natureza')" style="cursor:pointer" data-subject="Ciências da Natureza">
+        <div class="study-card-header">
+          <div class="study-icon">🔬</div>
+          <h3>Ciências da Natureza</h3>
+        </div>
+        <div style="font-size:0.75rem;color:#007A60;font-weight:800;margin-bottom:8px">Nota individual · 0 a 1000 pts · 45 questões</div>
+        <p>Física, Química e Biologia integradas. Priorize: leis de Newton, termodinâmica, reações químicas, ecologia, genética e evolução. O ENEM adora conectar ciência com situações do dia a dia — meio ambiente, saúde e tecnologia.</p>
+      </div>
+
+      <div class="study-card hum" onclick="selectStudyCard(this,'Ciências Humanas')" style="cursor:pointer" data-subject="Ciências Humanas">
+        <div class="study-card-header">
+          <div class="study-icon">🌍</div>
+          <h3>Ciências Humanas</h3>
+        </div>
+        <div style="font-size:0.75rem;color:#6C5CE7;font-weight:800;margin-bottom:8px">Nota individual · 0 a 1000 pts · 45 questões</div>
+        <p>História, Geografia, Filosofia e Sociologia em conjunto. Foco em contextos históricos, globalização, direitos humanos, cidadania e pensadores clássicos. Relacione os eventos ao tempo presente — o ENEM adora interdisciplinaridade.</p>
+      </div>
+    </div>
+
+    <div class="start-row" style="flex-direction:column;align-items:center;gap:10px">
+      <div id="studySelWarning" style="display:none;color:var(--laranja);font-weight:800;font-size:0.9rem">⚠️ Selecione uma matéria ou "Todas as Matérias" antes de iniciar!</div>
+      <button class="btn btn-primary btn-lg" onclick="startQuiz()">
+        🎯 Iniciar Simulado Agora!
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===================================================
+     TELA 4: QUIZ
+=================================================== -->
+<div id="quiz" class="screen">
+  <header class="header">
+    <button class="btn-back" onclick="goTo('study')"><span class="arrow">←</span> Voltar</button>
+    <div class="logo">📚 ENEMsim</div>
+    <div id="quizHeaderRight" style="font-weight:800;font-size:0.9rem;color:var(--texto-suave)"></div>
+  </header>
+
+  <div class="quiz-content">
+    <!-- Banner de matéria (modo todas as matérias) -->
+    <div class="subject-block-banner" id="subjectBlockBanner">
+      <div class="sbb-icon" id="sbbIcon">📐</div>
+      <div class="sbb-info">
+        <div class="sbb-label">Você está em</div>
+        <div class="sbb-name" id="sbbName">Matemática</div>
+        <div class="sbb-count" id="sbbCount">Questão 1 de 45 desta matéria</div>
+      </div>
+      <div class="sbb-progress">
+        <div class="sbb-pct" id="sbbPct">0%</div>
+        <div class="sbb-mini-bar"><div class="sbb-mini-fill" id="sbbFill" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="quiz-top">
+      <div class="question-counter" id="questionCounter"></div>
+      <div class="subject-tag" id="subjectTag"></div>
+    </div>
+
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+    </div>
+
+    <div class="question-card" id="questionCard">
+      <!-- Pergunta gerada via JS -->
+    </div>
+
+    <div class="next-row">
+      <button class="btn btn-next" id="btnNext" disabled onclick="nextQuestion()">
+        Próxima questão →
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===================================================
+     TELA 5: RESULTADO
+=================================================== -->
+<div id="result" class="screen">
+  <header class="header">
+    <button class="btn-back" onclick="goTo('study')"><span class="arrow">←</span> Voltar</button>
+    <div class="logo">📚 ENEMsim</div>
+    <span class="badge">🏆 Resultado</span>
+  </header>
+
+  <div class="result-content">
+    <div class="result-emoji" id="resultEmoji">🎉</div>
+    <h2 class="result-title" id="resultTitle">Seu Resultado no Simulado!</h2>
+
+    <div class="score-circle">
+      <div class="score-number" id="scoreNumber">0</div>
+      <div class="score-label">pontos ENEM</div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-box green">
+        <div class="stat-num" id="statAcertos">0</div>
+        <div class="stat-lbl">✅ Acertos</div>
+      </div>
+      <div class="stat-box red">
+        <div class="stat-num" id="statErros">0</div>
+        <div class="stat-lbl">❌ Erros</div>
+      </div>
+      <div class="stat-box blue">
+        <div class="stat-num" id="statTotal">0</div>
+        <div class="stat-lbl">📝 Total</div>
+      </div>
+    </div>
+
+    <!-- Notas por matéria (somente modo "todas") -->
+    <div id="notasMateriaBox" style="display:none;background:white;border-radius:20px;padding:20px 24px;width:100%;box-shadow:0 4px 16px rgba(0,0,0,0.07);border-top:4px solid var(--roxo)"></div>
+
+    <div class="motivational" id="motivationalMsg"></div>
+
+    <div class="chart-card">
+      <div class="chart-title">📊 Desempenho por Área</div>
+      <div class="chart-bars" id="chartBars"></div>
+    </div>
+
+    <button class="btn btn-primary btn-lg" onclick="restartQuiz()">
+      🔄 Refazer Simulado
+    </button>
+
+    <!-- GABARITO -->
+    <div class="gabarito-card">
+      <div class="gabarito-header">
+        <div class="gabarito-title">📋 Gabarito Completo</div>
+        <div class="gabarito-legend">
+          <span><span class="legend-dot" style="background:var(--verde)"></span>Acerto</span>
+          <span><span class="legend-dot" style="background:var(--laranja)"></span>Erro</span>
+        </div>
+      </div>
+      <div class="gabarito-list" id="gabaritoList"></div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ===================================================
+     JAVASCRIPT
+=================================================== -->
+<script>
+// ============================================================
+// BANCO DE QUESTÕES — 45 por matéria (180 total)
+// ============================================================
+const questions = [
+
+// ══ MATEMÁTICA (45) ══
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Uma empresa de telecomunicações cobra R$35,00 de taxa fixa mais R$0,80 por minuto excedente ao pacote de 120 minutos.",
+enunciado:"Se Maria usou 170 minutos e pagou a conta integralmente, qual foi o valor total?",
+alternatives:["R$65,00","R$70,00","R$75,00","R$80,00","R$85,00"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Uma função quadrática é definida por f(x) = ax² + bx + c, com a ≠ 0.",
+enunciado:"Dada f(x) = x² − 5x + 6, quais são as raízes reais dessa função?",
+alternatives:["x=1 e x=6","x=−2 e x=−3","x=2 e x=3","x=−1 e x=6","x=1 e x=−6"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Em um triângulo retângulo, sen(α)=3/5 e cos(α)=4/5.",
+enunciado:"Qual é o valor de tg(α)?",
+alternatives:["3/4","4/3","5/3","5/4","4/5"],correct:0},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Uma progressão geométrica (PG) tem primeiro termo a₁=2 e razão q=3.",
+enunciado:"Qual é o valor do 5º termo dessa PG?",
+alternatives:["54","81","162","243","486"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Um banco oferece juros compostos de 2% ao mês. Use (1,02)³ ≈ 1,0612.",
+enunciado:"Um capital de R$5.000,00 aplicado por 3 meses resultará em montante de aproximadamente:",
+alternatives:["R$5.250,00","R$5.300,00","R$5.306,00","R$5.350,00","R$5.400,00"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"O logaritmo logₐ(b)=x significa que aˣ=b.",
+enunciado:"Qual é o valor de log₂(64)?",
+alternatives:["4","5","6","7","8"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"A mediana é o valor central de um conjunto ordenado de dados.",
+enunciado:"Para o conjunto {3, 7, 9, 2, 15, 1, 8}, qual é a mediana?",
+alternatives:["7","8","9","3","6"],correct:0},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"O coeficiente angular de uma reta indica sua inclinação em relação ao eixo x.",
+enunciado:"A equação da reta que passa por A(1, 2) e B(3, 8) é:",
+alternatives:["y=2x","y=3x−1","y=3x+1","y=2x+1","y=3x"],correct:1},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"A distância entre P(x₁,y₁) e Q(x₂,y₂) é d=√[(x₂−x₁)²+(y₂−y₁)²].",
+enunciado:"A distância entre A(1,1) e B(4,5) é:",
+alternatives:["3","4","5","6","7"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Em uma turma de 30 alunos: 18 gostam de matemática, 12 de português e 6 gostam das duas.",
+enunciado:"Qual é a probabilidade de um aluno escolhido ao acaso gostar de pelo menos uma das disciplinas?",
+alternatives:["2/3","3/4","4/5","5/6","1"],correct:3},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Área de trapézio: A=[(B+b)×h]/2, com B e b as bases e h a altura.",
+enunciado:"Um trapézio tem bases de 10 cm e 6 cm, com altura de 4 cm. Sua área é:",
+alternatives:["28 cm²","32 cm²","36 cm²","40 cm²","44 cm²"],correct:1},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"O discriminante da equação ax²+bx+c=0 é Δ=b²−4ac.",
+enunciado:"Para a equação 2x²−4x−6=0, o valor de Δ é:",
+alternatives:["32","48","64","16","56"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"O número de combinações de n elementos tomados p a p é C(n,p)=n!/[p!(n−p)!].",
+enunciado:"Quantas comissões de 3 pessoas podem ser formadas a partir de 8 pessoas?",
+alternatives:["24","48","56","112","336"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Um semáforo funciona em ciclos: 30 s verde, 5 s amarelo e 25 s vermelho.",
+enunciado:"Qual é a probabilidade de um motorista chegar e encontrá-lo verde?",
+alternatives:["1/4","1/3","1/2","5/12","1/6"],correct:3},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Volume de esfera: V=(4/3)πr³. Use π≈3,14.",
+enunciado:"Uma bola de raio 11 cm tem volume aproximado de:",
+alternatives:["3.518 cm³","4.523 cm³","5.270 cm³","5.575 cm³","6.112 cm³"],correct:3},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"O desvio padrão mede a dispersão em relação à média.",
+enunciado:"Para {2,4,4,4,5,5,7,9} com média 5, qual é a variância?",
+alternatives:["2","3","4","5","6"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Uma população bacteriana dobra a cada hora. Início com 500 bactérias.",
+enunciado:"Qual será a quantidade após 4 horas?",
+alternatives:["2.000","4.000","6.000","8.000","10.000"],correct:3},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Mapa em escala 1:50.000 com uma estrada medindo 6 cm no papel.",
+enunciado:"Qual é o comprimento real dessa estrada, em quilômetros?",
+alternatives:["1 km","2 km","3 km","4 km","5 km"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"IMC = massa(kg) / altura²(m).",
+enunciado:"Uma pessoa com 75 kg e 1,5 m de altura tem IMC de:",
+alternatives:["25","30","33,3","50","37,5"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Numa escola, a razão entre aprovados e reprovados é 7:3, com 600 alunos no total.",
+enunciado:"Quantos foram aprovados?",
+alternatives:["180","240","360","420","480"],correct:3},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"A derivada f'(x) indica a taxa de variação instantânea de f(x).",
+enunciado:"Se f(x)=3x³−2x²+5x−1, qual é f'(x)?",
+alternatives:["9x²−4x+5","9x²−2x+5","3x²−4x+5","9x²−4x","3x³−4x+5"],correct:0},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"O perímetro de um polígono regular de n lados com lado l é P=n×l.",
+enunciado:"Um octógono regular tem perímetro de 72 cm. Qual é o comprimento de cada lado?",
+alternatives:["7 cm","8 cm","9 cm","10 cm","12 cm"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Numa urna há 4 bolas vermelhas, 3 azuis e 5 brancas.",
+enunciado:"Qual é a probabilidade de retirar uma bola azul ou branca?",
+alternatives:["1/3","1/4","1/2","2/3","3/4"],correct:3},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"O módulo |x| é a distância de x à origem na reta real.",
+enunciado:"Quais são as soluções de |2x−3|=7?",
+alternatives:["x=5 e x=−2","x=5 e x=2","x=−5 e x=2","x=−5 e x=−2","x=5 e x=−5"],correct:0},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"A função afim f(x)=ax+b tem raiz onde f(x)=0.",
+enunciado:"A função f(x)=−3x+9 tem zero em:",
+alternatives:["x=−3","x=9","x=3","x=−9","x=1/3"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Uma PA tem a₁=5 e a₇=29.",
+enunciado:"Qual é a razão dessa PA?",
+alternatives:["3","4","5","6","7"],correct:1},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Notação científica: a×10ⁿ, com 1≤a<10.",
+enunciado:"O número 0,00045 em notação científica é:",
+alternatives:["4,5×10⁻³","4,5×10⁻⁴","4,5×10⁴","4,5×10³","45×10⁻⁵"],correct:1},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Pelo Teorema de Tales, AD=4, DB=6 e AE=5 num triângulo com reta paralela à base.",
+enunciado:"Qual é o valor de EC?",
+alternatives:["6,5","7","7,5","8","8,5"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Num histograma, a classe [10,20) tem 15 crianças num total de 60.",
+enunciado:"Qual é a frequência relativa dessa classe?",
+alternatives:["15%","20%","25%","30%","35%"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Crescimento populacional: P(t)=100.000×(1,03)^t.",
+enunciado:"Após 1 ano, a população será de:",
+alternatives:["100.300","103.000","103.050","130.000","300.000"],correct:1},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"O número de permutações de n elementos distintos é P(n)=n!",
+enunciado:"De quantas formas 5 livros distintos podem ser organizados numa estante?",
+alternatives:["20","60","100","120","140"],correct:3},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Relação fundamental da trigonometria: sen²(α)+cos²(α)=1.",
+enunciado:"Se sen(α)=5/13, qual é cos(α) para α no 1º quadrante?",
+alternatives:["5/12","12/13","13/12","8/13","12/5"],correct:1},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Volume do cone: V=(1/3)πr²h. Use π≈3,14.",
+enunciado:"Um cone com raio=6 cm e altura=9 cm tem volume de:",
+alternatives:["226,08 cm³","282,60 cm³","339,12 cm³","395,64 cm³","452,16 cm³"],correct:3},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Fórmula de Bhaskara: x=(−b±√Δ)/2a.",
+enunciado:"Quais são as raízes de x²−7x+12=0?",
+alternatives:["x=3 e x=4","x=−3 e x=−4","x=2 e x=6","x=1 e x=12","x=−2 e x=−6"],correct:0},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"A pode fazer um trabalho em 6 horas; B, em 4 horas.",
+enunciado:"Trabalhando juntos, em quanto tempo concluirão o trabalho?",
+alternatives:["2 h","2 h 24 min","3 h","3 h 20 min","4 h"],correct:1},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Números irracionais não podem ser escritos como fração de inteiros.",
+enunciado:"Qual alternativa apresenta APENAS números irracionais?",
+alternatives:["π, √2, √9","√2, √3, √5","π, 0,333..., √4","√4, √16, √25","0,5, 1/3, √2"],correct:1},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Dois dados cúbicos com faces de 1 a 6 são lançados simultaneamente.",
+enunciado:"Qual é a probabilidade de a soma ser igual a 7?",
+alternatives:["1/6","1/9","1/12","1/18","1/36"],correct:0},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Produto notável: (a+b)²=a²+2ab+b².",
+enunciado:"Qual é o resultado de (3x−2)²?",
+alternatives:["9x²−4","9x²+4","9x²−12x+4","9x²+12x−4","9x²−6x+4"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Uma pizza circular com diâmetro de 40 cm é cortada em 8 fatias iguais. Use π≈3,14.",
+enunciado:"Qual é a área de cada fatia?",
+alternatives:["50,24 cm²","62,8 cm²","78,5 cm²","100,48 cm²","125,6 cm²"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Taxa de câmbio: R$5,20 por USD 1,00.",
+enunciado:"Um produto que custa USD 250,00 tem preço em reais de:",
+alternatives:["R$1.200,00","R$1.300,00","R$1.350,00","R$1.400,00","R$1.450,00"],correct:1},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Soma dos ângulos internos de polígono convexo de n lados: S=(n−2)×180°.",
+enunciado:"A soma dos ângulos internos de um decágono (10 lados) é:",
+alternatives:["1.080°","1.260°","1.440°","1.620°","1.800°"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Uma indústria fabrica 1.200 peças/dia em 8 horas.",
+enunciado:"Qual será a produção diária ao trabalhar 10 horas?",
+alternatives:["1.300","1.400","1.450","1.500","1.600"],correct:3},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Paralelepípedo com dimensões 30 cm×20 cm×15 cm (volume=9.000 cm³=0,009 m³).",
+enunciado:"Quantas caixas dessas cabem num caminhão com volume útil de 90 m³?",
+alternatives:["1.000","5.000","10.000","50.000","100.000"],correct:2},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Sistema de equações lineares: 2x+y=7 e x−y=2.",
+enunciado:"A solução do sistema é:",
+alternatives:["x=2, y=3","x=3, y=1","x=1, y=5","x=4, y=−1","x=3, y=2"],correct:1},
+
+{subject:"Matemática",subjectClass:"subj-mat",
+context:"Um carro percorre 360 km em 4 horas. O motorista quer percorrer 540 km no mesmo tempo.",
+enunciado:"Em que porcentagem ele deve aumentar sua velocidade média?",
+alternatives:["25%","33%","50%","60%","75%"],correct:2},
+
+// ══ LÍNGUA PORTUGUESA (45) ══
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'A cidade é um palimpsesto: camadas sobre camadas de histórias, apagadas e reescritas continuamente pela mão do tempo e dos homens.'",
+enunciado:"No trecho acima, 'palimpsesto' é uma metáfora que relaciona a cidade a:",
+alternatives:["Um documento reescrito sobre si mesmo, preservando marcas do passado","Uma pintura abstrata com múltiplas interpretações","Um mapa geográfico detalhado","Um arquivo histórico inacessível","Uma construção arquitetônica moderna"],correct:0},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Nunca me abandone', disse ela, com a voz embargada.",
+enunciado:"A oração 'Nunca me abandone' classifica-se sintaticamente como:",
+alternatives:["Oração subordinada substantiva subjetiva","Oração principal com verbo no imperativo negativo","Oração coordenada assindética","Oração subordinada adverbial temporal","Oração subordinada adjetiva restritiva"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'O Brasil é um país de dimensões continentais, marcado por profundas desigualdades sociais. Apesar dos avanços nas últimas décadas, ainda persiste um abismo entre ricos e pobres.'",
+enunciado:"O conectivo 'Apesar dos avanços' introduz uma oração com valor semântico de:",
+alternatives:["Causalidade","Finalidade","Concessão","Consequência","Condição"],correct:2},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Macunaíma: herói sem nenhum caráter' — Mário de Andrade",
+enunciado:"A obra representa um marco do Modernismo brasileiro porque:",
+alternatives:["Valoriza a tradição clássica portuguesa e a métrica formal","Propõe uma releitura da identidade nacional a partir da mistura cultural e da linguagem popular","Retrata a nobreza europeia com admiração","Defende o purismo linguístico como princípio literário","Segue rigorosamente as normas do Realismo de Eça de Queirós"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Que seja eterno enquanto dure.' — Vinicius de Moraes",
+enunciado:"A frase é considerada paradoxal porque:",
+alternatives:["Apresenta dois adjetivos de sentido oposto","Afirma a eternidade de algo ao mesmo tempo que admite seu fim","Usa verbo no subjuntivo com sentido imperativo","É uma hipérbole com uso intencional","Combina dois substantivos abstratos incompatíveis"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"Texto jornalístico: 'A violência urbana cresce ano a ano. Dados do IBGE apontam que 78% dos moradores das capitais se sentem inseguros ao sair à noite.'",
+enunciado:"Qual recurso argumentativo é utilizado para conferir credibilidade ao argumento?",
+alternatives:["Argumento de autoridade baseado em dado estatístico de fonte reconhecida","Apelo emocional aos leitores","Exemplificação com casos concretos e individuais","Comparação entre épocas históricas distintas","Ironia e humor para criticar a situação"],correct:0},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'A professora, cansada das reclamações, preferiu ignorar os alunos que chegaram atrasados.'",
+enunciado:"O trecho 'que chegaram atrasados' é uma oração subordinada adjetiva de que tipo?",
+alternatives:["Explicativa, pois acrescenta informação sobre todos os alunos","Restritiva, pois delimita quais alunos foram ignorados","Substantiva objetiva direta","Adverbial causal","Coordenada sindética aditiva"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Dom Casmurro', de Machado de Assis, narra a história de Bentinho, que suspeita de traição por parte de Capitu.",
+enunciado:"A ambiguidade central — se Capitu traiu ou não — serve para:",
+alternatives:["Simplificar a narrativa e facilitar a compreensão","Questionar a confiabilidade do narrador e explorar a subjetividade da percepção humana","Criticar diretamente a monarquia imperial","Reforçar valores conservadores do século XIX","Apresentar um desfecho moralizante sobre infidelidade"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"Norma culta e uso da crase.",
+enunciado:"Em qual das frases há emprego correto do acento grave (crase)?",
+alternatives:["Ela foi à escola todos os dias.","Ela foi a pé até a escola.","Refiro-me a ela com carinho.","Entregou o presente à ela.","Fomos à Paris no verão passado."],correct:0},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Não é o peixe que está podre; é a cabeça do peixe.' — ditado popular",
+enunciado:"Esse ditado é utilizado frequentemente para criticar:",
+alternatives:["O desperdício de alimentos nas classes mais pobres","A corrupção que começa pelos líderes e contamina as instituições","O descaso com a higiene na manipulação de alimentos","A falta de cuidado com o meio ambiente","A ganância do mercado consumidor"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"Anúncio: 'Beba mais água. Seu corpo agradece, sua pele brilha, seu futuro sorri.'",
+enunciado:"O efeito de sentido produzido pela enumeração 'agradece... brilha... sorri' é:",
+alternatives:["Criar urgência e medo sobre não beber água","Construir uma imagem progressiva e positiva de benefícios acumulados","Apresentar dados científicos sobre hidratação","Usar hipérbole para exagerar os efeitos da água","Estabelecer uma relação de causa e consequência negativa"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"Frases: I. 'Haverão problemas nessa decisão.' II. 'Há muitos anos que não o vejo.' III. 'Fazem três semanas que cheguei.'",
+enunciado:"Sobre o uso dos verbos 'haver' e 'fazer' em sentido temporal, assinale a alternativa correta:",
+alternatives:["Apenas I está correta","Apenas II está correta","I e III estão corretas","II e III estão incorretas","Todas estão corretas"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"Crônica: 'Segunda-feira é uma invenção dos pessimistas. Chega sempre cedo, traz o peso da semana inteira nas costas e sai tarde sem se despedir.'",
+enunciado:"O recurso literário predominante nesse trecho é:",
+alternatives:["Metonímia","Personificação — atribuir características humanas a um conceito abstrato","Sinestesia","Hipérbole","Eufemismo"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'A literatura é a arte de escrever algo que será lido duas vezes; o jornalismo, o que será lido uma vez.' — Cyril Connolly",
+enunciado:"A distinção proposta baseia-se principalmente em qual característica?",
+alternatives:["O comprimento dos textos produzidos em cada área","A profundidade, ambiguidade e permanência da linguagem literária versus a objetividade jornalística","O suporte físico em que cada texto é publicado","O público-alvo de cada tipo de escrita","O uso de figuras de linguagem exclusivamente na literatura"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"Anúncio: 'O novo smartphone XR5: velocidade que você nunca imaginou.'",
+enunciado:"O uso do pronome 'você' nesse anúncio tem função discursiva de:",
+alternatives:["Indicar respeito formal ao consumidor","Criar intimidade e envolver diretamente o leitor como destinatário do produto","Substituir 'nós' em contexto informal","Marcar impessoalidade no texto publicitário","Indicar que o produto é exclusivo para jovens"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Fui ao mercado, comprei frutas, legumes e carnes.'",
+enunciado:"A conjunção 'e' na frase acima é coordenativa de que tipo?",
+alternatives:["Adversativa","Explicativa","Conclusiva","Aditiva","Alternativa"],correct:3},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"Modernismo brasileiro — 1ª fase (1922–1930): ruptura com o passado, experimentação formal.",
+enunciado:"Qual evento é considerado o marco inaugural do Modernismo no Brasil?",
+alternatives:["Publicação de 'Iracema', de José de Alencar","A Semana de Arte Moderna de 1922, em São Paulo","A publicação do manifesto realista por Machado de Assis","A criação da Academia Brasileira de Letras em 1897","O lançamento do Romantismo com Gonçalves Dias"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Eles se entreolharam, sem dizer uma palavra.'",
+enunciado:"O prefixo 'entre-' no verbo 'entreolhar' indica:",
+alternatives:["Repetição de uma ação","Ação recíproca entre dois sujeitos","Negação da ação praticada","Ação feita de forma incompleta","Ação praticada com intensidade"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Grande sertão: veredas', de João Guimarães Rosa.",
+enunciado:"Uma das marcas estilísticas mais notáveis de Guimarães Rosa é:",
+alternatives:["O uso de linguagem extremamente simples e direta","A recriação da linguagem do sertão com neologismos, arcaísmos e musicalidade","A narrativa linear e cronológica sem ambiguidades","O realismo fotográfico na descrição das personagens","A reprodução fiel da norma culta lisboeta"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'A educação é um direito de todos, mas nem todos têm acesso igualitário a ela. Desigualdades econômicas, geográficas e sociais criam barreiras que impedem milhares de crianças de frequentar a escola.'",
+enunciado:"Qual é a tese central defendida nesse trecho?",
+alternatives:["A educação é irrelevante para o desenvolvimento econômico","Embora seja um direito universal, a educação ainda é permeada por desigualdades que limitam o acesso","O governo é o único responsável pela exclusão educacional","As crianças não querem estudar por falta de interesse","A educação só é acessível aos mais ricos"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'O médico, cuidadoso e atencioso, examinou o paciente com extrema dedicação.'",
+enunciado:"O adjunto adnominal 'cuidadoso e atencioso' modifica qual termo?",
+alternatives:["O verbo 'examinou'","O substantivo 'médico'","O substantivo 'paciente'","O advérbio 'extrema'","O sujeito composto"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Minha pátria é minha língua.' — Fernando Pessoa",
+enunciado:"Essa afirmação expressa qual visão sobre língua e identidade?",
+alternatives:["Que a pátria física é irrelevante para o ser humano","Que a língua constitui o espaço mais íntimo de pertencimento e identidade cultural","Que a língua é apenas um instrumento de comunicação utilitário","Que toda pessoa deve aprender múltiplos idiomas para ter pátria","Que a identidade nacional é determinada somente pela raça"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"Charge: político discursando com legenda 'Prometeu mundos e fundos, entregou menos que o esperado.'",
+enunciado:"O tipo de texto da charge é predominantemente:",
+alternatives:["Narrativo, pois conta uma história sequencial","Argumentativo-crítico, pois usa humor e ironia para questionar comportamentos políticos","Instrucional, pois orienta o leitor a agir","Descritivo, pois descreve características físicas do político","Poético, pois explora a sonoridade das palavras"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Claro Enigma' é um livro do poeta Carlos Drummond de Andrade.",
+enunciado:"O título é um oxímoro porque:",
+alternatives:["Usa duas palavras de sentido idêntico para intensificar","Junta dois termos contraditórios — 'claro' (transparente) e 'enigma' (mistério) — num mesmo sintagma","Faz referência a um personagem histórico específico","É uma metáfora sobre a luz do sol","Representa a dualidade campo/cidade na obra de Drummond"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Não é a língua que faz o escritor; é o escritor que faz a língua.' — frase atribuída a Guimarães Rosa.",
+enunciado:"Essa afirmação sugere que o papel do escritor é:",
+alternatives:["Submeter-se rigidamente às normas gramaticais vigentes","Transformar e expandir as possibilidades expressivas da língua por meio da criação literária","Simplificar a língua para torná-la acessível a todos","Traduzir obras estrangeiras para o português","Ensinar gramática normativa nas escolas"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Preciso que você me diga a verdade.'",
+enunciado:"A oração 'que você me diga a verdade' é subordinada de que tipo?",
+alternatives:["Adjetiva restritiva","Substantiva objetiva direta","Adverbial condicional","Substantiva subjetiva","Coordenada explicativa"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'O Cortiço', de Aluísio Azevedo, retrata a vida coletiva num cortiço carioca do século XIX.",
+enunciado:"A obra é classificada como Naturalista principalmente por:",
+alternatives:["Apresentar personagens idealizados e romanticizados","Explorar o determinismo biológico e social na conduta dos personagens","Usar linguagem poética e simbólica no estilo parnasiano","Defender os valores morais da burguesia conservadora","Centrar-se na psicologia individual e no narrador em 1ª pessoa"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"Trecho de redação: 'A falta de saneamento básico no Brasil é um problema histórico que afeta especialmente as populações mais vulneráveis, gerando ciclos de doenças, pobreza e exclusão social.'",
+enunciado:"Para ampliar esse argumento numa redação do ENEM, o candidato deveria:",
+alternatives:["Relatar a história pessoal de uma família afetada pelo problema","Acrescentar dados estatísticos, exemplos concretos e relacionar causas, efeitos e possíveis soluções","Mudar o tema e escrever sobre outro problema social","Repetir a mesma ideia com outras palavras para reforçar","Usar exclusivamente citações de filósofos clássicos"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Iracema', de José de Alencar, é uma das principais obras do Romantismo indianista.",
+enunciado:"A palavra 'Iracema' é anagrama de qual outra palavra?",
+alternatives:["Amazônia","América","Maracajé","Carimá","Acerima"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"Campanha: 'Pense antes de compartilhar. Uma mentira viaja mais rápido que a verdade.'",
+enunciado:"O slogan acima apela a qual valor para convencer o leitor?",
+alternatives:["Patriotismo e amor à nação","Responsabilidade individual e pensamento crítico diante da desinformação","Vaidade e desejo de popularidade nas redes","Medo de punição legal pelo compartilhamento","Competição entre usuários de redes sociais"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'O sertão vai virar mar, o mar vai virar sertão.' — Antônio Conselheiro",
+enunciado:"Esse dito popular carrega um sentido de:",
+alternatives:["Previsão meteorológica sobre secas e enchentes no Nordeste","Inversão profética da ordem social estabelecida, prometendo transformação radical","Descrição geográfica das mudanças climáticas","Crítica à ausência de chuvas no semiárido","Exaltação da natureza nordestina"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Ela se tornou médica.' / 'Tornaram-se amigas inseparáveis.'",
+enunciado:"O verbo 'tornar-se' nessas frases exerce a função de verbo:",
+alternatives:["Transitivo direto","Intransitivo","De ligação (predicativo do sujeito)","Transitivo indireto","Auxiliar"],correct:2},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'A língua é a pátria que carregamos dentro de nós.' — Eduardo Lourenço",
+enunciado:"A figura de linguagem predominante na afirmação é:",
+alternatives:["Hipérbole","Eufemismo","Metáfora","Metonímia","Catacrese"],correct:2},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'A tecnologia transformou as relações humanas. Hoje, comunicamo-nos instantaneamente com pessoas do outro lado do mundo, mas muitas vezes ignoramos quem está ao nosso lado.'",
+enunciado:"Qual é a estratégia argumentativa presente no trecho?",
+alternatives:["Comparação temporal entre passado e presente para revelar um paradoxo contemporâneo","Apelo à autoridade científica sobre o uso de smartphones","Narração de um caso pessoal do autor","Refutação de argumento contrário à tecnologia","Enumeração de vantagens da modernidade tecnológica"],correct:0},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'O João comprou o carro. Ele ficou muito feliz.'",
+enunciado:"O pronome 'Ele' realiza qual operação coesiva?",
+alternatives:["Coesão lexical por sinonímia","Coesão referencial por substituição pronominal (anáfora)","Coesão sequencial por conector conclusivo","Coesão por elipse do sujeito","Coesão por repetição lexical"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'As meninas', de Lygia Fagundes Telles, apresenta três personagens femininas num pensionato durante a ditadura.",
+enunciado:"A obra é marcada por:",
+alternatives:["Narração linear e direta com final otimista","Tensão psicológica, memória fragmentada e crítica velada ao contexto político","Exaltação dos valores militares e patrióticos","Descrição naturalista da miséria rural","Experimentalismo vanguardista sem enredo definido"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Comprei livros, canetas, cadernos e outros materiais escolares.'",
+enunciado:"A expressão 'e outros materiais escolares' é classificada sintaticamente como:",
+alternatives:["Aposto enumerativo","Objeto direto com núcleo implícito","Adjunto adverbial de adição","Predicativo do objeto","Complemento nominal"],correct:0},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"Texto publicitário: 'Invista no que realmente importa. Invista em você.'",
+enunciado:"A repetição do verbo 'Invista' no início de cada período é um recurso chamado:",
+alternatives:["Polissíndeto","Anáfora retórica","Epiploce","Silepse","Zeugma"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Felicidade Clandestina', conto de Clarice Lispector.",
+enunciado:"O estilo de Clarice Lispector é marcado principalmente por:",
+alternatives:["Narração objetiva e jornalística dos fatos","Fluxo de consciência, introspecção e exploração dos estados internos dos personagens","Versos rimados com estrutura poética clássica","Crítica social explícita e direta à desigualdade","Narrativa épica com heróis mitológicos"],correct:1},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"A norma culta exige concordância nominal entre substantivo, artigo, adjetivo e numeral.",
+enunciado:"Assinale a alternativa com concordância nominal inteiramente correta:",
+alternatives:["Ela ficou meia confusa com a situação.","Ambas as alunas foram aprovadas.","É proibido a entrada de menores.","As crianças estavam bastante animadas e contentes.","B e D estão corretas"],correct:4},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'A literatura não é um luxo, mas uma necessidade.' — parafraseado de Angela Carter.",
+enunciado:"Qual recurso argumentativo sustenta essa afirmação?",
+alternatives:["Negação de um valor comumente atribuído (luxo) e substituição por outro mais essencial (necessidade)","Ironia sobre o comportamento dos leitores","Citação de dados estatísticos sobre leitura","Argumento de autoridade baseado em pesquisa empírica","Comparação entre diferentes tipos de arte"],correct:0},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Vidas Secas', de Graciliano Ramos, narra a saga da família de Fabiano, retirante nordestino.",
+enunciado:"A prosa seca e telegráfica de Graciliano Ramos em 'Vidas Secas' é uma escolha estética que:",
+alternatives:["Reproduz formalmente a pobreza e a desumanização vividas pelas personagens, como se o próprio idioma também estivesse 'seco'","Demonstra o descuido do autor com a linguagem literária","Aproxima o texto do estilo jornalístico para atingir maior público","Reflete a riqueza vocabular dos retirantes nordestinos","Segue o modelo do Romantismo realista europeu com linguagem ornamentada"],correct:0},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"Em textos argumentativos, os operadores discursivos orientam a leitura.",
+enunciado:"Qual operador discursivo introduz uma conclusão a partir de premissas apresentadas anteriormente?",
+alternatives:["Embora","Todavia","Portanto","Entretanto","Conquanto"],correct:2},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"'Tudo passa, tudo cansa, tudo muda. / Tudo é passageiro, tudo se cansa e tudo se transforma.' — paráfrase de tema filosófico.",
+enunciado:"A figura de linguagem predominante no uso de 'tudo... tudo... tudo...' é:",
+alternatives:["Eufemismo","Hipérbole","Anáfora","Sinestesia","Metonímia"],correct:2},
+
+{subject:"Língua Portuguesa",subjectClass:"subj-por",
+context:"A Geração de 1945 (3ª fase modernista) reagiu ao experimentalismo da fase anterior.",
+enunciado:"A poesia da Geração de 45 caracteriza-se por:",
+alternatives:["Liberdade total de forma, verso livre e linguagem coloquial","Retomada da preocupação formal com a linguagem poética, valorização do verso trabalhado e certa universalidade temática","Engajamento político explícito e poesia como arma de transformação social","Reprodução fiel da realidade cotidiana com linguagem naturalista","Fusão de tradições indígenas, africanas e europeias na língua portuguesa"],correct:1},
+
+// ══ CIÊNCIAS DA NATUREZA (45) ══
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"A Primeira Lei de Newton (Lei da Inércia) afirma que um corpo tende a manter seu estado de repouso ou movimento.",
+enunciado:"Um passageiro arremessado para frente ao frear bruscamente é explicado pela:",
+alternatives:["Segunda Lei de Newton — F=m×a","Terceira Lei de Newton — ação e reação","Primeira Lei de Newton — o passageiro tende a manter seu estado de movimento","Lei da Gravitação Universal","Princípio de Arquimedes"],correct:2},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"Fotossíntese: 6CO₂ + 6H₂O + luz → C₆H₁₂O₆ + 6O₂.",
+enunciado:"Qual é o papel da clorofila nesse processo?",
+alternatives:["Catalisar a quebra da glicose em CO₂ e H₂O","Absorver energia luminosa e transferi-la para as reações químicas","Fixar o nitrogênio atmosférico para produzir aminoácidos","Transportar elétrons durante a respiração celular","Armazenar o amido produzido nos cloroplastos"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"A camada de ozônio absorve grande parte da radiação UV emitida pelo Sol.",
+enunciado:"Os CFCs destroem o ozônio estratosférico porque:",
+alternatives:["São gases de efeito estufa que aumentam a temperatura da estratosfera","Liberam cloro em reações catalíticas que destroem moléculas de O₃","Absorvem radiação infravermelha impedindo sua saída para o espaço","Reagem com o oxigênio para formar ácido sulfúrico na atmosfera","Aumentam a concentração de CO₂ nas camadas superiores"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"O carbono (C) tem número atômico 6 e configuração eletrônica 1s² 2s² 2p².",
+enunciado:"Quantos elétrons o carbono possui na camada de valência?",
+alternatives:["2","3","4","5","6"],correct:2},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"A mitose gera duas células-filhas com o mesmo número de cromossomos da célula-mãe.",
+enunciado:"Durante a anáfase da mitose, o que ocorre com os cromossomos?",
+alternatives:["Os cromossomos se condensam e ficam visíveis","As cromátides-irmãs se separam e migram para polos opostos","O núcleo se dissolve e o fuso se forma","Os cromossomos se alinham no plano equatorial","O citoplasma se divide formando duas células"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"A energia geotérmica é obtida a partir do calor interno da Terra.",
+enunciado:"Qual transformação de energia ocorre numa usina geotérmica?",
+alternatives:["Energia solar → química → elétrica","Energia térmica (calor da Terra) → mecânica (vapor) → elétrica","Energia potencial gravitacional → cinética → elétrica","Energia nuclear → luminosa → elétrica","Energia eólica → mecânica → elétrica"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"Lei de Lavoisier: em sistema fechado, a massa dos reagentes é igual à massa dos produtos.",
+enunciado:"12 g de carbono reagem com 32 g de oxigênio. A massa de CO₂ produzida é:",
+alternatives:["12 g","20 g","32 g","44 g","48 g"],correct:3},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"O sistema nervoso humano divide-se em SNC e SNP.",
+enunciado:"Qual é a função dos neurônios motores (eferentes)?",
+alternatives:["Captar estímulos do ambiente e transmiti-los ao SNC","Processar e integrar informações recebidas pelos neurônios sensoriais","Conduzir impulsos do SNC até órgãos efetores, como músculos e glândulas","Produzir mielina para isolar os axônios","Regular a temperatura corporal no hipotálamo"],correct:2},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"pH < 7 = ácido; pH = 7 = neutro; pH > 7 = básico.",
+enunciado:"O suco gástrico tem pH aproximado de 2. Isso significa que ele é:",
+alternatives:["Fortemente básico, com alta concentração de OH⁻","Neutro, adequado para a digestão de proteínas","Fortemente ácido, com alta concentração de H⁺","Levemente básico, com pH próximo de 8","Levemente ácido, com pH próximo de 6"],correct:2},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"O ciclo do carbono envolve trocas entre atmosfera, oceanos, solo e seres vivos.",
+enunciado:"A queima de combustíveis fósseis interfere no ciclo do carbono principalmente por:",
+alternatives:["Aumentar a fixação de carbono pelos vegetais","Reduzir a concentração de CO₂ na atmosfera","Liberar carbono armazenado por milhões de anos, elevando CO₂ atmosférico","Aumentar a dissolução do CO₂ nos oceanos sem impacto climático","Neutralizar a acidez do solo e beneficiar a agricultura"],correct:2},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"1ª Lei de Mendel: cruzamento Aa × Aa.",
+enunciado:"Num cruzamento entre dois heterozigotos (Aa×Aa), qual é a proporção fenotípica esperada com dominância completa?",
+alternatives:["1 dominante : 1 recessivo","3 dominantes : 1 recessivo","1 dominante : 2 heterozigotos : 1 recessivo","Todos os descendentes serão dominantes","2 dominantes : 2 recessivos"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"O espectro eletromagnético é ordenado por frequência e comprimento de onda.",
+enunciado:"Qual sequência ordena corretamente as radiações do maior para o menor comprimento de onda?",
+alternatives:["Raios gama → UV → visível → infravermelho → ondas de rádio","Ondas de rádio → infravermelho → visível → UV → raios gama","Raios X → microondas → infravermelho → visível → UV","Visível → UV → raios X → infravermelho → ondas de rádio","Microondas → raios X → raios gama → UV → visível"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"Respiração aeróbica: C₆H₁₂O₆ + 6O₂ → 6CO₂ + 6H₂O + energia.",
+enunciado:"Qual etapa da respiração aeróbica ocorre no citoplasma da célula?",
+alternatives:["Ciclo de Krebs","Cadeia respiratória","Glicólise","Fosforilação oxidativa","Beta-oxidação"],correct:2},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"Princípio de Le Chatelier: ao sofrer perturbação, um sistema em equilíbrio desloca-se para minimizar o efeito.",
+enunciado:"Na reação N₂(g)+3H₂(g)⇌2NH₃(g) (exotérmica), o que ocorre ao aumentar a pressão do sistema?",
+alternatives:["O equilíbrio desloca-se para a esquerda, favorecendo os reagentes","O equilíbrio desloca-se para a direita, favorecendo a produção de NH₃","O equilíbrio não é afetado pela pressão","A temperatura do sistema diminui automaticamente","A concentração de N₂ aumenta drasticamente"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"O vírus SARS-CoV-2 é um vírus de RNA.",
+enunciado:"Por que vírus de RNA mutam mais rapidamente do que vírus de DNA?",
+alternatives:["Porque o RNA tem menor massa molecular","Porque as RNA-polimerases têm maior taxa de erro e não possuem mecanismo eficiente de revisão","Porque o RNA é mais resistente a enzimas celulares","Porque os vírus de RNA têm mais genes do que os de DNA","Porque o RNA possui dupla fita, enquanto o DNA possui fita simples"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"O efeito fotoelétrico foi explicado por Einstein em 1905.",
+enunciado:"Qual observação confirma que a emissão de elétrons depende da frequência da luz, não da intensidade?",
+alternatives:["Luz de alta intensidade e baixa frequência emite mais elétrons","Nenhuma emissão ocorre abaixo de uma frequência mínima (limiar), independentemente da intensidade","A intensidade da luz determina a velocidade dos elétrons emitidos","Elétrons são emitidos apenas com luz infravermelha","A emissão de elétrons independe tanto da frequência quanto da intensidade"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"A fragmentação de habitats é uma das principais causas de perda de biodiversidade.",
+enunciado:"A fragmentação ameaça a biodiversidade principalmente porque:",
+alternatives:["Aumenta a competição entre espécies de regiões diferentes","Isola populações em pequenos fragmentos, reduzindo variabilidade genética e aumentando o risco de extinção","Facilita a dispersão de sementes entre fragmentos florestais","Elimina apenas espécies invasoras prejudiciais ao ecossistema","Reduz a temperatura local e prejudica espécies tropicais"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"Um elemento radioativo tem meia-vida de 10 anos. Amostra inicial: 80 g.",
+enunciado:"Qual será a massa restante após 30 anos?",
+alternatives:["40 g","20 g","10 g","5 g","2,5 g"],correct:2},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"A biotecnologia utiliza organismos vivos para desenvolver produtos e processos.",
+enunciado:"A insulina humana produzida por bactérias geneticamente modificadas é um exemplo de:",
+alternatives:["Clonagem terapêutica de células-tronco","Tecnologia do DNA recombinante — inserção de genes humanos em bactérias","Engenharia de proteínas por síntese química artificial","Fermentação alcoólica para produção de fármacos","Mutação induzida por raios ultravioleta"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"As forças intermoleculares determinam as propriedades físicas das substâncias.",
+enunciado:"Por que a água (H₂O) tem ponto de ebulição muito mais alto que o esperado para sua massa molecular?",
+alternatives:["Porque a água possui ligações covalentes muito fortes entre os átomos","Porque as ligações de hidrogênio entre moléculas de água são forças intermoleculares excepcionalmente intensas","Porque a água é uma molécula apolar com grande polarizabilidade","Porque o oxigênio é altamente eletronegativo e repele outras moléculas","Porque a água possui ligações iônicas entre H e O"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"O diabetes tipo 1 é uma doença autoimune que afeta o pâncreas.",
+enunciado:"O diabetes tipo 1 ocorre porque:",
+alternatives:["As células musculares desenvolvem resistência à insulina","O sistema imune destrói as células beta do pâncreas, que produzem insulina","O fígado para de converter glicogênio em glicose","A tireoide reduz a produção de hormônios metabólicos","O hipotálamo bloqueia os sinais de fome e saciedade"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"A termoquímica estuda as variações de energia em reações químicas.",
+enunciado:"Uma reação exotérmica é aquela em que:",
+alternatives:["A entalpia dos produtos é maior que a dos reagentes (ΔH > 0)","A entalpia dos produtos é menor que a dos reagentes (ΔH < 0)","A entropia do sistema sempre aumenta","O sistema absorve calor do ambiente para ocorrer","A temperatura do ambiente diminui durante a reação"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"Bactérias expostas a antibióticos desenvolvem resistência ao longo do tempo.",
+enunciado:"Esse fenômeno é explicado pela teoria evolutiva porque:",
+alternatives:["Os antibióticos causam mutações propositais nas bactérias para resistir","Bactérias que já possuíam mutações de resistência sobrevivem e se reproduzem mais, tornando a resistência predominante","Todas as bactérias se adaptam simultaneamente ao ambiente","Os antibióticos estimulam a produção de genes novos nas bactérias","A resistência é transmitida de humanos para bactérias"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"Duas cargas, +q e −q, estão separadas por uma distância d.",
+enunciado:"As linhas de campo elétrico entre as cargas apontam:",
+alternatives:["Da carga negativa para a carga positiva","Da carga positiva para a carga negativa","Perpendicularmente ao eixo que une as cargas","Paralelamente às cargas sem direção definida","Em círculos ao redor de cada carga"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"A teoria celular foi formulada por Schleiden, Schwann e Virchow.",
+enunciado:"Qual postulado abaixo NÃO faz parte da teoria celular clássica?",
+alternatives:["Toda célula é a unidade básica da vida","Toda célula se origina de uma célula preexistente","Todos os organismos são compostos por células","As células possuem DNA como material genético universal","A célula é a unidade estrutural e funcional dos seres vivos"],correct:3},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"Os polímeros são macromoléculas formadas pela repetição de monômeros.",
+enunciado:"A principal diferença entre polímeros sintéticos e naturais é:",
+alternatives:["Polímeros sintéticos são sempre biodegradáveis, ao contrário dos naturais","Polímeros naturais são produzidos por organismos vivos; os sintéticos são obtidos por síntese química industrial","Polímeros sintéticos são exclusivamente formados por carbono e hidrogênio","Polímeros naturais não possuem ligações covalentes entre monômeros","Polímeros sintéticos são sempre mais resistentes que os naturais"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"O período de oscilação de um pêndulo simples é determinado por grandezas físicas específicas.",
+enunciado:"Qual grandeza física determina o período de oscilação de um pêndulo simples?",
+alternatives:["A massa do objeto suspenso e a amplitude de oscilação","Somente a amplitude de oscilação","O comprimento do fio e a aceleração da gravidade local","A temperatura do ambiente e a densidade do material","A velocidade inicial e a massa do objeto"],correct:2},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"A eutrofização é um processo de degradação de corpos d'água.",
+enunciado:"A eutrofização de lagos e rios é causada principalmente por:",
+alternatives:["Excesso de metais pesados dissolvidos na água","Acúmulo de plásticos na superfície dos corpos d'água","Enriquecimento excessivo de nutrientes (nitrogênio e fósforo) que provoca proliferação de algas","Diminuição da temperatura da água em períodos de seca","Acidificação da água pelo CO₂ atmosférico"],correct:2},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"Reação de neutralização: ácido + base → sal + água.",
+enunciado:"A reação entre HCl e NaOH produz:",
+alternatives:["NaCl e H₂O — sal e água","NaH e Cl₂O — hidreto e óxido","Na₂O e HCl₂ — óxido e ácido modificado","NaOHCl — hidróxido composto","H₂ e NaCl₂ — hidrogênio e sal duplo"],correct:0},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"Os mecanismos de transferência de calor são: condução, convecção e irradiação.",
+enunciado:"O calor do Sol chega à Terra por qual mecanismo?",
+alternatives:["Condução — transmissão pelo contato direto entre partículas","Convecção — transporte por correntes de fluido","Irradiação — propagação de ondas eletromagnéticas no vácuo","Difusão — transporte de partículas por gradiente de concentração","Indução — geração de calor por campos magnéticos"],correct:2},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"Na eletrólise, a corrente elétrica provoca reações químicas não espontâneas.",
+enunciado:"Na eletrólise da água (H₂O), quais gases são produzidos nos eletrodos?",
+alternatives:["CO₂ no cátodo e O₂ no ânodo","H₂ no cátodo e O₂ no ânodo","O₂ no cátodo e H₂ no ânodo","H₂ nos dois eletrodos","N₂ no cátodo e H₂ no ânodo"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"A pressão arterial é medida em mmHg e reflete a força do sangue sobre as paredes dos vasos.",
+enunciado:"A hipertensão arterial é considerada fator de risco cardiovascular porque:",
+alternatives:["Reduz a frequência cardíaca e diminui o fluxo sanguíneo","Aumenta cronicamente a pressão sobre as paredes vasculares, podendo causar lesões no coração, rins e cérebro","Eleva a concentração de glicose no sangue","Diminui a produção de hemácias na medula óssea","Aumenta a produção de insulina pelo pâncreas"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"As enzimas são catalisadores biológicos que aceleram reações químicas.",
+enunciado:"O que ocorre com a atividade enzimática quando a temperatura ultrapassa o valor ótimo (~37°C) de uma enzima humana?",
+alternatives:["A atividade aumenta proporcionalmente ao aumento de temperatura","A enzima é desnaturada — sua estrutura tridimensional é alterada, perdendo a função catalítica","A enzima passa a catalisar reações inversas","A enzima se replica para compensar a perda de eficiência","A atividade se mantém constante independentemente da temperatura"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"As linhas espectrais de emissão e absorção dos elementos confirmam o modelo de Bohr.",
+enunciado:"O modelo atômico de Bohr é confirmado experimentalmente por:",
+alternatives:["O efeito Compton — espalhamento de raios X por elétrons","As linhas espectrais de emissão e absorção dos elementos","A difração de elétrons em cristais metálicos","A radioatividade natural dos elementos pesados","O princípio da incerteza de Heisenberg"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"O Cerrado é o segundo maior bioma da América do Sul.",
+enunciado:"O Cerrado é considerado hotspot de biodiversidade ameaçado. Sua principal característica ecológica é:",
+alternatives:["Clima equatorial com chuvas abundantes durante todo o ano","Vegetação de savana tropical com marcada estação seca e elevada endemicidade","Vegetação halófita adaptada à salinidade do solo","Floresta ombrófila densa com dossel fechado","Vegetação pioneira de restinga adaptada a solos arenosos costeiros"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"A expressão gênica envolve transcrição e tradução.",
+enunciado:"O processo de tradução, que ocorre nos ribossomos, consiste em:",
+alternatives:["Cópia do DNA para formar uma molécula de mRNA","Síntese de proteínas a partir da sequência de códons do mRNA, com participação do tRNA","Replicação semiconservativa do DNA antes da divisão celular","Transcrição reversa do RNA para DNA em retrovírus","Fragmentação do DNA em fragmentos menores para análise genética"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"Lei da gravitação universal: F = G×m₁×m₂/d².",
+enunciado:"Se a distância entre dois corpos for dobrada, mantendo as massas constantes, a força gravitacional será:",
+alternatives:["A mesma","O dobro","A metade","Um quarto do valor original","Quatro vezes maior"],correct:3},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"O etanol (C₂H₅OH) é amplamente utilizado como combustível no Brasil.",
+enunciado:"Qual tipo de ligação química predomina nas interações entre moléculas de etanol puro?",
+alternatives:["Ligações iônicas entre os átomos de carbono","Forças de van der Waals do tipo dipolo-dipolo instantâneo","Ligações de hidrogênio entre a hidroxila (−OH) de uma molécula e o oxigênio de outra","Ligações covalentes entre moléculas distintas de etanol","Ligações metálicas pela presença de carbono"],correct:2},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"Três resistores de 6 Ω cada são ligados em paralelo.",
+enunciado:"Qual é a resistência equivalente do circuito?",
+alternatives:["18 Ω","9 Ω","6 Ω","3 Ω","2 Ω"],correct:3},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"Segundo a regra dos 10%, apenas 10% da energia de um nível trófico passa para o seguinte. Um produtor armazena 10.000 kcal.",
+enunciado:"Qual é a energia disponível para o consumidor secundário?",
+alternatives:["1.000 kcal","100 kcal","10 kcal","1 kcal","500 kcal"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"Princípio de Arquimedes: todo corpo submerso em fluido sofre empuxo igual ao peso do fluido deslocado.",
+enunciado:"Por que um navio de aço consegue flutuar?",
+alternatives:["Porque o aço tem propriedades magnéticas que repelem a água","Porque o volume total do navio desloca uma massa de água maior que a massa total do navio","Porque a pressão da água embaixo é menor que nas laterais","Porque o navio é oco por dentro, tornando sua densidade menor que a da água","Alternativas B e D estão ambas corretas"],correct:4},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"O princípio da incerteza de Heisenberg afirma que não é possível determinar simultaneamente com precisão a posição e o momento de uma partícula.",
+enunciado:"Esse princípio tem como consequência filosófica e científica:",
+alternatives:["A confirmação do determinismo absoluto na Física Clássica","A impossibilidade de descrever a natureza com qualquer equação matemática","A necessidade de uma abordagem probabilística para descrever o comportamento das partículas subatômicas","A eliminação do conceito de energia potencial na Mecânica Quântica","A comprovação de que o universo não obedece a nenhuma lei natural"],correct:2},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"A engenharia genética permite a manipulação do DNA de organismos para fins específicos.",
+enunciado:"Os organismos geneticamente modificados (OGMs) gerados na agricultura são objeto de debate ético e científico porque:",
+alternatives:["São comprovadamente inofensivos à saúde e ao meio ambiente por todas as pesquisas existentes","Envolvem incertezas sobre possíveis impactos na biodiversidade, saúde humana e dependência econômica dos agricultores em relação às empresas detentoras das patentes","Produzem necessariamente alimentos com menor valor nutritivo","São proibidos pela OMS em todos os países desenvolvidos","Utilizam radiação ionizante para modificar o código genético das plantas"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"As reações de oxirredução envolvem transferência de elétrons entre reagentes.",
+enunciado:"Na eletrólise da água (2H₂O → 2H₂ + O₂), o que ocorre no polo negativo (cátodo)?",
+alternatives:["Oxidação dos íons OH⁻ com liberação de O₂","Redução dos íons H⁺ com liberação de H₂","Dissolução do eletrodo metálico","Formação de água oxigenada","Produção de ozônio por descarga elétrica"],correct:1},
+
+{subject:"Ciências da Natureza",subjectClass:"subj-nat",
+context:"O ciclo do nitrogênio é fundamental para a manutenção da vida na biosfera.",
+enunciado:"As bactérias fixadoras de nitrogênio, como as do gênero Rhizobium, são importantes para os ecossistemas porque:",
+alternatives:["Decompõem matéria orgânica liberando CO₂ para a atmosfera","Convertem o N₂ atmosférico (inacessível à maioria dos seres vivos) em amônia (NH₃), forma assimilável pelas plantas","Produzem oxigênio durante a fotossíntese nos nódulos radiculares","Consomem nitratos do solo impedindo a eutrofização dos rios","Realizam a nitrificação transformando amônia em nitratos tóxicos"],correct:1},
+
+// ══ CIÊNCIAS HUMANAS (45) ══
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A Revolução Francesa (1789) difundiu os ideais iluministas de liberdade, igualdade e fraternidade.",
+enunciado:"A Declaração dos Direitos do Homem e do Cidadão (1789) apresenta qual contradição histórica fundamental?",
+alternatives:["A declaração foi escrita em latim, inacessível ao povo","A declaração excluía mulheres, escravizados e pobres do conceito de 'homem universal'","A declaração foi criada pela monarquia para manter o poder","A declaração proibia a prática de qualquer religião na França","A declaração foi adotada por Napoleão antes da Revolução"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A Conferência de Berlim (1884-1885) dividiu o continente africano entre as potências europeias.",
+enunciado:"A partilha da África pelas potências europeias revela:",
+alternatives:["A cooperação voluntária entre nações africanas e europeias para o desenvolvimento","A imposição de fronteiras artificiais que desconsideraram etnias, culturas e povos africanos, gerando conflitos que persistem até hoje","O reconhecimento da soberania das nações africanas pelo direito internacional","A tentativa europeia de erradicar o tráfico de escravizados no continente","O início do processo de descolonização do continente africano"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"Michel Foucault, em 'Vigiar e Punir' (1975), analisa como o poder disciplinar opera nas instituições modernas.",
+enunciado:"O conceito de 'panoptismo' de Foucault descreve um mecanismo de controle social em que:",
+alternatives:["O Estado usa violência física aberta para disciplinar os indivíduos","Os indivíduos se autodisciplinam por não saberem se estão sendo observados, internalizando o controle","As instituições religiosas controlam o comportamento moral dos cidadãos","A mídia de massa manipula a opinião pública com informações falsas","Os grupos marginalizados resistem coletivamente ao poder dominante"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A teoria marxista analisa a sociedade a partir das relações de produção e da luta de classes.",
+enunciado:"Para Karl Marx, a alienação do trabalho no capitalismo consiste em:",
+alternatives:["A recusa do operário em trabalhar devido ao salário insuficiente","O processo pelo qual o trabalhador se torna estranho ao produto de seu trabalho, ao processo produtivo e a si mesmo","A exploração do trabalho escravo nas colônias europeias","A expropriação das terras camponesas para a formação do capital agrário","A dominação cultural das classes baixas pelas classes dominantes por meio da mídia"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"O Coeficiente de Gini mede a distribuição de renda de um país.",
+enunciado:"Segundo o Coeficiente de Gini, o Brasil é um dos países mais desiguais do mundo. Esse coeficiente mede:",
+alternatives:["O crescimento do PIB per capita ao longo do tempo","A distribuição da renda — quanto mais próximo de 1, maior a desigualdade","O índice de criminalidade em relação à pobreza","A diferença entre a taxa de natalidade e mortalidade","O nível de corrupção percebida pela população"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A Guerra Fria (1947-1991) foi um período de tensão ideológica entre EUA e URSS sem confronto militar direto.",
+enunciado:"A doutrina da 'destruição mútua assegurada' (MAD) funcionava como elemento de dissuasão porque:",
+alternatives:["Demonstrava a superioridade tecnológica norte-americana","Garantia que nenhuma das partes atacaria, pois ambas seriam destruídas num conflito nuclear","Permitia testes nucleares sem consequências para a população civil","Estimulava a cooperação científica entre as duas superpotências","Assegurava que os países aliados seriam protegidos pelo arsenal nuclear"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A urbanização acelerada no Brasil ocorreu principalmente na segunda metade do século XX.",
+enunciado:"O processo de metropolização no Brasil gerou como consequência direta:",
+alternatives:["O equilíbrio perfeito entre crescimento econômico e qualidade de vida urbana","A formação de periferias com precária infraestrutura, segregação socioespacial e aumento da violência urbana","O esvaziamento definitivo das áreas rurais e o fim da agricultura familiar","A consolidação de uma classe média homogênea com acesso universal a serviços","A redução da desigualdade regional pela concentração industrial nas grandes cidades"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"Immanuel Kant formulou o 'imperativo categórico' como princípio universal da moralidade.",
+enunciado:"O imperativo categórico de Kant significa que:",
+alternatives:["As ações morais devem ser baseadas nas consequências que produzem","Uma ação é moralmente correta apenas se o princípio que a orienta puder ser universalizado sem contradição","A moralidade é determinada pela cultura e pelos costumes de cada sociedade","O prazer e a felicidade individual são os únicos critérios válidos de ação moral","As leis do Estado são sempre a expressão da razão moral universal"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A Constituição de 1988 representa um avanço histórico para os direitos indígenas no Brasil.",
+enunciado:"A Constituição de 1988 avança em relação aos direitos indígenas ao:",
+alternatives:["Determinar a integração compulsória dos indígenas à sociedade nacional","Reconhecer aos povos indígenas seus direitos originários sobre as terras que habitam e proteger sua organização social, línguas e tradições","Proibir o contato entre povos indígenas e a sociedade não indígena","Transferir a gestão das terras indígenas para o Ministério da Agricultura","Declarar a soberania plena dos povos indígenas com autonomia para legislar"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"O conceito de 'heartland' de Halford Mackinder afirma que quem controla o coração da Eurásia controlaria o mundo.",
+enunciado:"O conceito de 'heartland' de Mackinder influenciou:",
+alternatives:["A política isolacionista dos Estados Unidos no século XIX","Estratégias de expansão territorial de potências como a Rússia e a Alemanha, e a política de contenção soviética pelos EUA","O processo de descolonização da África e da Ásia no século XX","A criação da Organização das Nações Unidas após a Segunda Guerra","A política de livre comércio adotada pelo GATT e pela OMC"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A abolição da escravidão no Brasil foi assinada pela princesa Isabel em 1888.",
+enunciado:"A abolição da escravidão no Brasil em 1888 é considerada incompleta por historiadores porque:",
+alternatives:["A princesa Isabel não tinha autoridade legal para assinar a lei","A abolição não foi acompanhada de políticas de inclusão social, terra ou reparação para os ex-escravizados","A lei foi revogada por D. Pedro II logo após sua assinatura","A abolição liberou apenas os escravizados de origem africana, não os indígenas","A lei excluía os escravizados que trabalhavam em zonas urbanas"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"O sociólogo T. H. Marshall dividiu a cidadania em três dimensões históricas.",
+enunciado:"Qual das alternativas representa corretamente as três dimensões da cidadania segundo Marshall?",
+alternatives:["Religiosa, econômica e cultural","Civil (direitos individuais), política (participação no poder) e social (direitos a educação, saúde e previdência)","Local, nacional e global","Jurídica, militar e educacional","Formal, material e simbólica"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"O racismo estrutural, conceito desenvolvido por Silvio de Almeida, descreve o racismo como fenômeno sistêmico.",
+enunciado:"O conceito de racismo estrutural implica que:",
+alternatives:["O racismo é apenas produto de preconceitos individuais e não tem dimensão sistêmica","O racismo está inserido nas estruturas econômicas, políticas e jurídicas da sociedade, produzindo desigualdades independentemente da intenção individual","Somente países com história de escravidão apresentam racismo estrutural","O racismo estrutural só existe quando expressamente previsto em lei","Combater o racismo é responsabilidade exclusiva do Estado"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A crise do Estado de bem-estar social, a partir dos anos 1970, levou ao surgimento do neoliberalismo.",
+enunciado:"O neoliberalismo propõe:",
+alternatives:["Ampliação dos gastos públicos em saúde, educação e previdência","Redução do papel do Estado, privatizações, desregulamentação e abertura dos mercados","Fortalecimento dos sindicatos e dos direitos trabalhistas","Protecionismo econômico e barreiras comerciais entre países","Socialização dos meios de produção e planejamento central da economia"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A 'Revolução Verde' dos anos 1960-70 aumentou enormemente a produtividade agrícola mundial.",
+enunciado:"A Revolução Verde foi utilizada como refutação prática do malthusianismo porque:",
+alternatives:["Reduziu a natalidade nos países em desenvolvimento","Aumentou enormemente a produtividade agrícola com novas sementes e tecnologias, expandindo a oferta de alimentos","Redistribuiu as terras agricultáveis entre pequenos agricultores nos países pobres","Eliminou a fome em escala global ao longo do século XX","Demonstrou que a população humana global atingiu seu limite máximo"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"O Ato Institucional Número 5 (AI-5) foi decretado em 1968 durante a ditadura militar brasileira.",
+enunciado:"O AI-5 representou o momento mais duro da ditadura porque:",
+alternatives:["Anistiou todos os presos políticos do regime","Suspendeu o Congresso, cassou mandatos, extinguiu o habeas corpus e institucionalizou a tortura","Estabeleceu eleições diretas para presidente da República","Criou o bipartidarismo como sistema político oficial","Proibiu partidos de esquerda mas manteve as liberdades civis"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A renda fundiária urbana explica como o solo é valorizado diferencialmente nas cidades.",
+enunciado:"A valorização diferencial do solo urbano é determinada principalmente por:",
+alternatives:["A vontade do poder público de distribuir igualmente os serviços urbanos","A localização, o acesso à infraestrutura e aos equipamentos urbanos, concentrando maior valorização nas áreas privilegiadas","A quantidade de habitantes por quilômetro quadrado em cada bairro","A altitude e as condições climáticas de cada área da cidade","O número de anos que cada construção tem na área"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A Revolução Russa de 1917 instaurou o primeiro Estado socialista do mundo.",
+enunciado:"A Nova Política Econômica (NEP), implementada por Lênin em 1921, representou um recuo tático porque:",
+alternatives:["Permitiu o retorno pleno do capitalismo com abertura para investimentos estrangeiros","Permitiu certa liberdade de mercado em setores menores para recuperar a economia devastada pela guerra e pela revolução","Aboliu o Partido Comunista e restaurou o sistema czarista","Privatizou as principais indústrias e as distribuiu aos trabalhadores","Criou uma economia planificada sem qualquer elemento de mercado"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"O movimento feminista passou por diferentes 'ondas' ao longo do século XX e XXI.",
+enunciado:"A 'segunda onda' do feminismo (anos 1960-70) ampliou as reivindicações para incluir:",
+alternatives:["Apenas o direito ao voto e à participação política formal","Questões sobre autonomia corporal, sexualidade, trabalho doméstico não remunerado e igualdade de gênero em todas as esferas sociais","Exclusivamente a igualdade salarial no mercado de trabalho","A criação de partidos políticos exclusivamente femininos","A proibição do trabalho fora de casa para preservar o papel familiar da mulher"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A hermenêutica é a teoria da interpretação de textos, símbolos e contextos históricos.",
+enunciado:"O historiador que usa o método hermenêutico busca compreender um documento histórico:",
+alternatives:["Apenas pelo seu conteúdo literal e explícito","Contextualizando-o em seu tempo, considerando intenções do autor, contexto social e linguagem da época","Aplicando métodos estatísticos quantitativos ao texto","Comparando-o exclusivamente com documentos de outras civilizações","Ignorando o contexto histórico para garantir objetividade"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"Segundo Eric Hobsbawm, as 'tradições inventadas' são um fenômeno social moderno.",
+enunciado:"As 'tradições inventadas', segundo Hobsbawm, são práticas que:",
+alternatives:["Remontam a tempos imemoriais e nunca foram modificadas","Foram criadas recentemente mas se apresentam como se fossem antigas para legitimar o presente","São exclusivas de sociedades pré-capitalistas sem escrita","Foram abolidas pelo processo de modernização industrial","Existem apenas em sociedades com religião oficial do Estado"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A Declaração Universal dos Direitos Humanos foi proclamada pela ONU em 1948.",
+enunciado:"O principal debate contemporâneo sobre direitos humanos entre universalismo e relativismo cultural pode ser descrito como:",
+alternatives:["A disputa entre países ricos e pobres sobre quem financia os direitos humanos","A tensão entre a ideia de que direitos humanos são universais (válidos para todos) versus a ideia de que os direitos devem ser interpretados segundo cada cultura","O conflito entre direitos individuais e coletivos dentro de uma mesma nação","O debate sobre se os direitos humanos devem ser protegidos por tribunais nacionais ou internacionais","A disputa entre diferentes religiões sobre a fundamentação moral dos direitos"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"O desmatamento na Amazônia produz efeitos climáticos que ultrapassam as fronteiras regionais.",
+enunciado:"A perda florestal na Amazônia pode alterar o regime de chuvas em regiões distantes porque:",
+alternatives:["Aumenta a quantidade de poluentes atmosféricos na América do Sul apenas","A perda florestal reduz a evapotranspiração, afeta os 'rios voadores' e pode alterar o regime de chuvas em regiões distantes, incluindo o Cerrado e o Sul do Brasil","Provoca terramotos e deslizamentos de terra em toda a bacia hidrográfica","Elimina espécies que seriam úteis para a indústria farmacêutica no futuro","Aumenta a temperatura local em até 10°C imediatamente após o corte das árvores"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"O conceito de 'desindustrialização prematura' tem sido aplicado a economias emergentes como o Brasil.",
+enunciado:"A desindustrialização prematura do Brasil é considerada problemática porque:",
+alternatives:["O setor industrial brasileiro é o maior empregador do mundo","O Brasil perde sua base industrial antes de completar o desenvolvimento socioeconômico, comprometendo a geração de empregos qualificados e a diversificação produtiva","A indústria brasileira é extremamente poluente e deve ser eliminada","A desindustrialização beneficia apenas as multinacionais estrangeiras","O setor de serviços não é capaz de absorver a mão de obra deslocada da indústria"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"O Tratado de Versalhes (1919) encerrou a Primeira Guerra Mundial.",
+enunciado:"O Tratado de Versalhes contribuiu para o surgimento do nazismo na Alemanha porque:",
+alternatives:["O tratado transferiu territórios alemães para a França e criou a República de Weimar","Impôs humilhantes reparações de guerra, perda de território e restrições militares à Alemanha, gerando ressentimento que Hitler soube explorar","O tratado proibiu a criação de partidos políticos na Alemanha por 10 anos","Dividiu a Alemanha em zonas de ocupação controladas pelos aliados","O tratado entregou a Áustria à Itália, isolando culturalmente os alemães"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"Pierre Bourdieu introduziu o conceito de 'capital cultural' para entender a reprodução social.",
+enunciado:"O 'capital cultural' de Bourdieu refere-se a:",
+alternatives:["O patrimônio financeiro acumulado por famílias ao longo de gerações","O conjunto de conhecimentos, habilidades, disposições e credenciais educacionais que conferem vantagens sociais a seus detentores","Os investimentos do Estado em educação e cultura","O valor econômico das obras de arte no mercado financeiro","A produção artística de grupos étnicos marginalizados"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"O federalismo brasileiro foi estabelecido pela Constituição de 1988.",
+enunciado:"O federalismo da Constituição de 1988 difere do modelo anterior (ditadura) porque:",
+alternatives:["Concentra ainda mais poder na União em relação aos estados","Descentraliza o poder político e administrativo, conferindo autonomia aos estados e municípios na gestão de políticas públicas","Elimina a competência da União para legislar sobre direitos civis","Cria um sistema unicameral no Congresso Nacional","Transforma o Brasil em um sistema de governo parlamentarista"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A crise financeira global de 2008 originou-se nos EUA com o colapso do mercado imobiliário.",
+enunciado:"A crise de 2008 demonstrou que:",
+alternatives:["As economias nacionais são totalmente independentes e não são afetadas por crises externas","A desregulamentação financeira e a interconexão dos mercados globais podem transmitir crises rapidamente entre países","Apenas os países desenvolvidos são vulneráveis a crises financeiras internacionais","O sistema bancário global é capaz de autorregular-se sem supervisão estatal","As criptomoedas são a solução para evitar futuras crises financeiras"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"Jean-Jacques Rousseau se diferenciava dos outros iluministas em pontos fundamentais.",
+enunciado:"Rousseau se diferenciava dos outros iluministas ao defender que:",
+alternatives:["A razão individual era o único critério válido de conhecimento","A civilização e a propriedade privada corromperam o ser humano originalmente bom — o 'bom selvagem'","O absolutismo monárquico era a forma mais eficiente de governo","A religião era a única fonte legítima de moral e ética","O progresso científico era a causa principal da desigualdade social"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A transição demográfica descreve a mudança das taxas de natalidade e mortalidade ao longo do desenvolvimento econômico.",
+enunciado:"O Brasil está numa fase avançada de transição demográfica, caracterizada por:",
+alternatives:["Alta natalidade e alta mortalidade, gerando população jovem e numerosa","Baixa natalidade e baixa mortalidade, com envelhecimento da população e bônus demográfico em declínio","Alta natalidade e baixa mortalidade, com rápido crescimento populacional","Estabilidade total nas taxas de natalidade e mortalidade há décadas","Queda drástica na expectativa de vida por conta de doenças crônicas"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"O MST é um dos maiores movimentos sociais da América Latina.",
+enunciado:"A luta do MST pela reforma agrária insere-se num contexto de:",
+alternatives:["Disputas étnicas entre diferentes grupos indígenas pelo território","Histórica concentração fundiária que remonta ao sistema colonial de sesmarias, perpetuando a desigualdade no campo","Conflito entre a agricultura familiar e o agroextrativismo indígena","Invasão de terras públicas para fins de especulação imobiliária","Resistência ao avanço tecnológico da agricultura mecanizada"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"O Conselho de Segurança da ONU tem sido criticado por sua estrutura de poder.",
+enunciado:"A principal crítica ao Conselho de Segurança da ONU é que:",
+alternatives:["É composto exclusivamente por países em desenvolvimento sem representação ocidental","Os cinco membros permanentes (EUA, Reino Unido, França, Rússia e China) possuem poder de veto, podendo bloquear resoluções mesmo quando a maioria as aprova","Não possui mecanismo para aplicar sanções econômicas a países agressores","Toma decisões por maioria simples, sem considerar o peso das potências nucleares","Exclui países asiáticos e africanos de sua composição permanente"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A teoria realista das relações internacionais é representada por Hans Morgenthau.",
+enunciado:"A corrente realista das relações internacionais afirma que:",
+alternatives:["A cooperação internacional é a norma dominante e os conflitos são exceções","Os Estados são os principais atores das relações internacionais, orientados pelo interesse nacional e pela busca de poder num sistema anárquico","As organizações internacionais e o direito internacional são os principais reguladores da política mundial","A identidade e os valores culturais determinam o comportamento dos Estados","O comércio e a interdependência econômica eliminam os incentivos para a guerra"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A Lei 10.639/2003 tornou obrigatório o ensino de história e cultura afro-brasileira e africana nas escolas.",
+enunciado:"O principal objetivo dessa legislação é:",
+alternatives:["Substituir o ensino da história europeia pelo da história africana","Reconhecer e valorizar a contribuição dos africanos e seus descendentes para a formação da sociedade brasileira, combatendo o racismo no ambiente escolar","Criar um currículo exclusivo para alunos afrodescendentes","Tornar obrigatório o ensino de línguas africanas nas escolas públicas","Compensar financeiramente as famílias de descendentes de escravizados"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A agroecologia surge como alternativa à agricultura convencional.",
+enunciado:"A agroecologia propõe:",
+alternatives:["O abandono completo da tecnologia agrícola em favor da subsistência","Integração entre conhecimentos científicos e tradicionais para produzir alimentos com menor impacto ambiental e maior justiça social","A privatização das sementes crioulas por grandes corporações","A substituição total da mão de obra rural por maquinário automatizado","O retorno ao modo de produção feudal baseado na servidão"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A filosofia política de John Rawls propõe uma teoria da justiça baseada no 'véu da ignorância'.",
+enunciado:"O 'véu da ignorância' rawlsiano propõe que os princípios de uma sociedade justa devem ser escolhidos por pessoas que:",
+alternatives:["Conhecem perfeitamente sua posição social, renda e talentos","Não sabem qual posição social, habilidades, sexo ou raça terão na sociedade, garantindo imparcialidade nas escolhas","São filósofos iluminados capazes de determinar o bem comum","Viveram em sociedades injustas e buscam vingança","Representam exclusivamente os interesses das gerações futuras"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"O conceito de 'desenvolvimento sustentável' foi consagrado pelo Relatório Brundtland (1987).",
+enunciado:"A definição clássica de desenvolvimento sustentável pressupõe:",
+alternatives:["O abandono do crescimento econômico em favor da preservação ambiental total","A conciliação entre crescimento econômico, equidade social e preservação ambiental numa perspectiva de longo prazo","A transferência de tecnologia dos países ricos para os países pobres como única solução","A privatização dos recursos naturais como mecanismo de preservação pelo mercado","O retorno ao estado pré-industrial para eliminar a degradação ambiental"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"O conceito de 'desenvolvimento sustentável' foi popularizado pelo Relatório Brundtland (1987).",
+enunciado:"A definição clássica de 'desenvolvimento sustentável' pressupõe:",
+alternatives:["Crescimento econômico ilimitado desde que gerenciado por governos nacionais","Atender às necessidades do presente sem comprometer a capacidade das gerações futuras de atenderem às suas próprias necessidades","A suspensão do desenvolvimento industrial nos países em desenvolvimento","O retorno a modelos econômicos pré-industriais de subsistência","A transferência de tecnologia dos países ricos para os países pobres como solução definitiva"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"Hannah Arendt analisou o fenômeno totalitário em obras como 'As Origens do Totalitarismo' e 'Eichmann em Jerusalém'.",
+enunciado:"O conceito de 'banalidade do mal', cunhado por Arendt a partir do julgamento de Eichmann, sugere que:",
+alternatives:["O mal é praticado apenas por indivíduos psicologicamente perturbados ou com tendências sádicas","Grandes atrocidades podem ser cometidas por pessoas comuns que simplesmente obedecem ordens sem reflexão moral","A violência extrema é inerente à natureza humana","O totalitarismo é impossível em sociedades com educação formal","Os regimes totalitários dependem sempre de uma liderança genial e carismática"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"O processo de globalização produziu tanto integração quanto fragmentação cultural.",
+enunciado:"O fenômeno da 'glocalização', cunhado por Roland Robertson, descreve:",
+alternatives:["A globalização restrita às economias locais de pequeno porte","A forma como culturas locais absorvem, reinterpretam e ressignificam elementos globais, produzindo sínteses culturais únicas","A rejeição total da globalização por grupos nacionalistas","A padronização completa de culturas locais pelo modelo cultural norte-americano","A migração de populações entre países como consequência da integração econômica"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A questão indígena no Brasil envolve disputas jurídicas, políticas e territoriais complexas.",
+enunciado:"O conceito de 'indigenato', referendado pelo STF no julgamento de Raposa Serra do Sol (2009), significa que:",
+alternatives:["As terras indígenas pertencem ao FUNAI e são administradas pelo governo federal","O direito indígena às terras que habitam é originário, anterior ao próprio Estado brasileiro, não se tratando de concessão do governo","Os povos indígenas podem vender suas terras desde que com autorização judicial","As terras indígenas são propriedade privada dos líderes tribais reconhecidos","O Estado pode realocar povos indígenas para outras áreas desde que compensados financeiramente"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"O Consenso de Washington (1989) estabeleceu um receituário de reformas econômicas para países em desenvolvimento.",
+enunciado:"As políticas do Consenso de Washington recomendavam:",
+alternatives:["Aumento dos gastos públicos, estatização de empresas estratégicas e controle cambial rígido","Disciplina fiscal, privatizações, abertura comercial, desregulamentação e redução do papel do Estado na economia","Protecionismo comercial para promover a industrialização nacional","Reformas agrárias amplas para reduzir a concentração de terra","Criação de moeda única regional à semelhança do Euro para os países latino-americanos"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A questão agrária no Brasil relaciona-se a problemas históricos de concentração de terra.",
+enunciado:"O Índice de Gini da concentração fundiária no Brasil, historicamente elevado, demonstra:",
+alternatives:["Que o Brasil possui uma distribuição equilibrada de terras entre pequenos e grandes proprietários","Uma das maiores concentrações de terra do mundo, em que poucos latifundiários detêm enormes extensões, enquanto milhões de famílias não têm acesso à terra","Que a Reforma Agrária promovida nos anos 1990 resolveu definitivamente o problema","Que o agronegócio é responsável pela democratização do acesso à propriedade rural","Que a legislação brasileira proíbe a propriedade de mais de 100 hectares por família"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"A geopolítica contemporânea é marcada por disputas em torno de recursos naturais estratégicos.",
+enunciado:"A Amazônia é considerada estratégica do ponto de vista geopolítico principalmente porque:",
+alternatives:["Contém as maiores reservas de petróleo do planeta ainda não exploradas","Abriga a maior biodiversidade do planeta, vastas reservas de água doce e minerais estratégicos, além de ter papel central na regulação climática global","Representa a fronteira natural entre o Brasil e seus vizinhos, facilitando a defesa territorial","Produz a maior parte do PIB agrícola brasileiro com culturas de exportação","É a única área do país sem conflitos fundiários entre pequenos agricultores e grandes fazendeiros"],correct:1},
+
+{subject:"Ciências Humanas",subjectClass:"subj-hum",
+context:"O conceito de 'necropolítica', desenvolvido por Achille Mbembe, amplia a biopolítica de Foucault.",
+enunciado:"A 'necropolítica' de Mbembe analisa:",
+alternatives:["A política de saúde pública nos países africanos pós-coloniais","O poder soberano de decidir quem pode viver e quem deve morrer, especialmente nas populações negras e colonizadas","A democracia representativa como forma de distribuição equitativa do poder","O controle estatal da natalidade nas populações rurais","As políticas de imigração que impedem a circulação de pessoas entre países"],correct:1}
+
+];
+
+// ============================================================
+// ESTADO GLOBAL
+// ============================================================
+let currentQuestion = 0;
+let userAnswers = [];
+let quizQuestions = [];
+let selectedAnswer = null;
+let answered = false;
+let selectedSubject = null; // 'all' ou nome da matéria
+
+// ============================================================
+// NAVEGAÇÃO ENTRE TELAS
+// ============================================================
+function goTo(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+  window.scrollTo(0, 0);
+  if (screenId === 'study') {
+    document.querySelectorAll('.study-card').forEach(c => c.classList.remove('selected'));
+    selectedSubject = null;
+    const warn = document.getElementById('studySelWarning');
+    if (warn) warn.style.display = 'none';
+  }
+}
+
+// ============================================================
+// SELECIONAR CARD DE MATÉRIA (estudo)
+// ============================================================
+function selectStudyCard(card, subject) {
+  document.querySelectorAll('.study-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  selectedSubject = subject;
+  const warn = document.getElementById('studySelWarning');
+  if (warn) warn.style.display = 'none';
+}
+
+// ============================================================
+// TELA DE PAGAMENTO → SIMULAR PAGAMENTO
+// ============================================================
+function simulatePay() {
+  const overlay = document.getElementById('processingOverlay');
+  overlay.classList.add('show');
+  setTimeout(() => {
+    overlay.classList.remove('show');
+    const success = document.getElementById('successOverlay');
+    success.classList.add('show');
+    setTimeout(() => {
+      success.classList.remove('show');
+      goTo('study');
+    }, 2500);
+  }, 2000);
+}
+
+// ============================================================
+// INICIAR QUIZ — filtra por matéria selecionada ou todas (180q)
+// ============================================================
+function startQuiz() {
+  if (!selectedSubject) {
+    const warn = document.getElementById('studySelWarning');
+    if (warn) { warn.style.display = 'block'; warn.scrollIntoView({behavior:'smooth',block:'center'}); }
+    return;
+  }
+
+  const bySubject = {};
+  questions.forEach(q => {
+    if (!bySubject[q.subject]) bySubject[q.subject] = [];
+    bySubject[q.subject].push(q);
+  });
+  Object.keys(bySubject).forEach(k => {
+    bySubject[k] = bySubject[k].sort(() => Math.random() - 0.5);
+  });
+
+  let selected = [];
+
+  if (selectedSubject === 'all') {
+    // 45 por matéria em blocos sequenciais: Mat → Port → Nat → Hum
+    const order = ["Matemática", "Língua Portuguesa", "Ciências da Natureza", "Ciências Humanas"];
+    order.forEach(subj => {
+      selected = selected.concat((bySubject[subj] || []).slice(0, 45));
+    });
+  } else {
+    // Matéria individual — todas as 45 questões
+    selected = (bySubject[selectedSubject] || []).slice(0, 45);
+  }
+
+  quizQuestions = selected;
+  currentQuestion = 0;
+  userAnswers = new Array(quizQuestions.length).fill(null);
+  selectedAnswer = null;
+  answered = false;
+
+  goTo('quiz');
+  renderQuestion();
+}
+
+// ============================================================
+// RENDERIZAR PERGUNTA
+// ============================================================
+function renderQuestion() {
+  const q = quizQuestions[currentQuestion];
+  const total = quizQuestions.length;
+  const letters = ['A','B','C','D','E'];
+
+  // Cabeçalho
+  document.getElementById('questionCounter').textContent =
+    `Questão ${currentQuestion + 1} de ${total}`;
+  document.getElementById('quizHeaderRight').textContent =
+    `✅ ${userAnswers.filter(a => a !== null).length} respondidas`;
+
+  // Tag de matéria
+  const tag = document.getElementById('subjectTag');
+  tag.textContent = q.subject;
+  tag.className = 'subject-tag ' + q.subjectClass;
+
+  // Barra de progresso geral
+  document.getElementById('progressFill').style.width =
+    ((currentQuestion / total) * 100) + '%';
+
+  // ── Banner de bloco (só no modo "todas as matérias") ──
+  const banner = document.getElementById('subjectBlockBanner');
+  if (selectedSubject === 'all') {
+    // Descobrir em qual bloco de 45 estamos
+    const blockSize = 45;
+    const blockIndex = Math.floor(currentQuestion / blockSize);
+    const posInBlock = (currentQuestion % blockSize) + 1;
+    const blockSubjects = [
+      { name:"Matemática",           icon:"📐", cls:"sbb-mat", fillColor:"var(--azul)" },
+      { name:"Língua Portuguesa",    icon:"📖", cls:"sbb-por", fillColor:"var(--amarelo)" },
+      { name:"Ciências da Natureza", icon:"🔬", cls:"sbb-nat", fillColor:"var(--verde)" },
+      { name:"Ciências Humanas",     icon:"🌍", cls:"sbb-hum", fillColor:"var(--roxo)" }
+    ];
+    const block = blockSubjects[blockIndex] || blockSubjects[0];
+    const pct = Math.round((posInBlock / blockSize) * 100);
+
+    banner.className = `subject-block-banner visible ${block.cls}`;
+    document.getElementById('sbbIcon').textContent  = block.icon;
+    document.getElementById('sbbName').textContent  = block.name;
+    document.getElementById('sbbCount').textContent = `Questão ${posInBlock} de ${blockSize} desta matéria`;
+    document.getElementById('sbbPct').textContent   = pct + '%';
+    document.getElementById('sbbFill').style.width  = pct + '%';
+    document.getElementById('sbbFill').style.background = block.fillColor;
+  } else {
+    banner.className = 'subject-block-banner'; // esconde
+  }
+
+  // Construir HTML da questão
+  let html = '';
+  if (q.context) {
+    html += `<div class="question-enunciado"><div class="context">${q.context}</div>`;
+  } else {
+    html += `<div class="question-enunciado">`;
+  }
+  html += `<strong>Questão ${currentQuestion + 1}.</strong> ${q.enunciado}</div>`;
+  html += `<div class="alternatives">`;
+  q.alternatives.forEach((alt, i) => {
+    html += `
+      <button class="alt-btn" id="alt${i}" onclick="selectAnswer(${i})">
+        <span class="alt-letter">${letters[i]}</span>
+        <span>${alt}</span>
+      </button>`;
+  });
+  html += `</div>`;
+
+  document.getElementById('questionCard').innerHTML = html;
+
+  // Restaurar resposta anterior
+  selectedAnswer = userAnswers[currentQuestion];
+  answered = selectedAnswer !== null;
+  if (answered) {
+    document.getElementById(`alt${selectedAnswer}`).classList.add('selected');
+    document.getElementById('btnNext').disabled = false;
+  } else {
+    document.getElementById('btnNext').disabled = true;
+  }
+
+  // Texto do botão final
+  document.getElementById('btnNext').textContent =
+    currentQuestion === total - 1 ? '✅ Ver resultado' : 'Próxima questão →';
+}
+
+// ============================================================
+// SELECIONAR RESPOSTA
+// ============================================================
+function selectAnswer(index) {
+  // Remove seleção anterior
+  document.querySelectorAll('.alt-btn').forEach(b => b.classList.remove('selected'));
+
+  // Marca selecionada
+  document.getElementById(`alt${index}`).classList.add('selected');
+
+  selectedAnswer = index;
+  userAnswers[currentQuestion] = index;
+  document.getElementById('btnNext').disabled = false;
+}
+
+// ============================================================
+// PRÓXIMA QUESTÃO
+// ============================================================
+function nextQuestion() {
+  if (selectedAnswer === null) return;
+
+  const total = quizQuestions.length;
+
+  if (currentQuestion < total - 1) {
+    currentQuestion++;
+    selectedAnswer = null;
+    answered = false;
+    renderQuestion();
+    // Animar card
+    const card = document.getElementById('questionCard');
+    card.style.animation = 'none';
+    card.offsetHeight; // reflow
+    card.style.animation = '';
+  } else {
+    showResult();
+  }
+}
+
+// ============================================================
+// CALCULAR E MOSTRAR RESULTADO
+// ============================================================
+function showResult() {
+  const total = quizQuestions.length;
+  let acertos = 0;
+  let acertosPorMateria = { "Matemática": { c:0, t:0 }, "Língua Portuguesa": { c:0, t:0 }, "Ciências da Natureza": { c:0, t:0 }, "Ciências Humanas": { c:0, t:0 } };
+
+  quizQuestions.forEach((q, i) => {
+    acertosPorMateria[q.subject].t++;
+    if (userAnswers[i] === q.correct) {
+      acertos++;
+      acertosPorMateria[q.subject].c++;
+    }
+  });
+
+  const erros = total - acertos;
+  const pct = acertos / total;
+  const nota = Math.round(350 + (pct * 550) + (pct > 0.7 ? (pct - 0.7) * 300 : 0));
+  const notaFinal = Math.min(1000, Math.max(350, nota));
+
+  // Rótulo do modo
+  const modeLabel = selectedSubject === 'all'
+    ? '🏆 Nota Geral (Todas as Matérias)'
+    : `📘 Nota — ${selectedSubject}`;
+  document.getElementById('resultTitle').textContent = modeLabel;
+  document.querySelector('.score-label').textContent = 'pontos ENEM';
+
+  // Emoji e mensagem
+  let emoji, msg;
+  if (pct >= 0.8) { emoji='🏆'; msg='🌟 Excelente desempenho! Você está no caminho certo para sua aprovação. Continue assim e a aprovação será sua!'; }
+  else if (pct >= 0.6) { emoji='🎯'; msg='👏 Bom resultado! Você tem uma base sólida. Com mais prática nos pontos de dificuldade, você vai longe!'; }
+  else if (pct >= 0.4) { emoji='📚'; msg='💪 Você está evoluindo! Identifique as matérias que precisa melhorar e foque seus estudos nelas. Não desista!'; }
+  else { emoji='🌱'; msg='🚀 Todo começo tem seu valor! Este resultado é um diagnóstico para saber onde focar. Com dedicação, você chegará lá!'; }
+
+  document.getElementById('resultEmoji').textContent = emoji;
+  document.getElementById('motivationalMsg').textContent = msg;
+  document.getElementById('scoreNumber').textContent = notaFinal;
+  document.getElementById('statAcertos').textContent = acertos;
+  document.getElementById('statErros').textContent = erros;
+  document.getElementById('statTotal').textContent = total;
+
+  // Notas por matéria (quando for "todas")
+  const notasMateriaBox = document.getElementById('notasMateriaBox');
+  if (selectedSubject === 'all') {
+    const barColors = { "Matemática":"var(--azul)", "Língua Portuguesa":"var(--amarelo)", "Ciências da Natureza":"var(--verde)", "Ciências Humanas":"var(--roxo)" };
+    const subjectColors = { "Matemática":{ bg:"var(--azul-palido)", color:"var(--azul)" }, "Língua Portuguesa":{ bg:"var(--amarelo-claro)", color:"#B7860B" }, "Ciências da Natureza":{ bg:"var(--verde-claro)", color:"#007A60" }, "Ciências Humanas":{ bg:"var(--roxo-claro)", color:"#6C5CE7" } };
+    let notasHTML = '<div style="font-weight:800;font-size:0.95rem;margin-bottom:12px;color:var(--texto)">📊 Notas por Área (0–1000)</div><div style="display:flex;flex-direction:column;gap:8px">';
+    Object.entries(acertosPorMateria).forEach(([mat, data]) => {
+      if (data.t === 0) return;
+      const p = data.c / data.t;
+      const n = Math.min(1000, Math.max(350, Math.round(350 + p*550 + (p>0.7?(p-0.7)*300:0))));
+      const sc = subjectColors[mat];
+      notasHTML += `<div style="display:flex;align-items:center;justify-content:space-between;background:${sc.bg};border-radius:12px;padding:10px 14px">
+        <span style="font-weight:800;color:${sc.color};font-size:0.88rem">${mat}</span>
+        <span style="font-family:'Baloo 2',cursive;font-size:1.3rem;font-weight:800;color:${sc.color}">${n} pts</span>
+      </div>`;
+    });
+    notasHTML += '</div>';
+    notasMateriaBox.innerHTML = notasHTML;
+    notasMateriaBox.style.display = 'block';
+  } else {
+    notasMateriaBox.style.display = 'none';
+  }
+
+  // Gráfico de barras
+  const barColors = { "Matemática":"var(--azul)", "Língua Portuguesa":"var(--amarelo)", "Ciências da Natureza":"var(--verde)", "Ciências Humanas":"var(--roxo)" };
+  const barShort  = { "Matemática":"Matemática", "Língua Portuguesa":"Português", "Ciências da Natureza":"C. Natureza", "Ciências Humanas":"C. Humanas" };
+  let chartHTML = '';
+  Object.entries(acertosPorMateria).forEach(([mat, data]) => {
+    if (data.t === 0) return;
+    const p = Math.round((data.c / data.t) * 100);
+    chartHTML += `<div class="chart-bar-wrap">
+      <div class="chart-pct" style="color:${barColors[mat]}">${p}%</div>
+      <div class="chart-bar" style="background:${barColors[mat]};height:${Math.max(8,p)}%"></div>
+      <div class="chart-bar-lbl">${barShort[mat]}</div>
+    </div>`;
+  });
+  document.getElementById('chartBars').innerHTML = chartHTML;
+
+  // Gabarito
+  const letters = ['A','B','C','D','E'];
+  const subjectColors = {
+    "Matemática":          { bg: "var(--azul-palido)",   color: "var(--azul)" },
+    "Língua Portuguesa":   { bg: "var(--amarelo-claro)", color: "#B7860B" },
+    "Ciências da Natureza":{ bg: "var(--verde-claro)",   color: "#007A60" },
+    "Ciências Humanas":    { bg: "var(--roxo-claro)",    color: "#6C5CE7" }
+  };
+
+  let gabHTML = '';
+  quizQuestions.forEach((q, i) => {
+    const acertou = userAnswers[i] === q.correct;
+    const sc = subjectColors[q.subject] || { bg: "#eee", color: "#333" };
+    const enunciadoResumido = q.enunciado.length > 90 ? q.enunciado.substring(0, 90) + '…' : q.enunciado;
+
+    // Resposta do usuário
+    let respostaUsuario = '';
+    if (userAnswers[i] !== null && userAnswers[i] !== undefined) {
+      if (acertou) {
+        respostaUsuario = `
+          <div class="gab-resp certa">
+            <span class="letter-badge">${letters[userAnswers[i]]}</span>
+            Sua resposta: ${q.alternatives[userAnswers[i]]}
+          </div>`;
+      } else {
+        respostaUsuario = `
+          <div class="gab-resp errada">
+            <span class="letter-badge">${letters[userAnswers[i]]}</span>
+            Sua resposta: ${q.alternatives[userAnswers[i]]}
+          </div>`;
+      }
+    } else {
+      respostaUsuario = `<div class="gab-resp neutra"><span class="letter-badge">?</span>Não respondida</div>`;
+    }
+
+    // Resposta correta (sempre mostrar se errou)
+    const respostaCorreta = !acertou ? `
+      <div class="gab-resp certa">
+        <span class="letter-badge">${letters[q.correct]}</span>
+        Correta: ${q.alternatives[q.correct]}
+      </div>` : '';
+
+    gabHTML += `
+      <div class="gabarito-item ${acertou ? 'acerto' : 'erro'}" style="animation-delay:${i * 0.05}s">
+        <span class="gab-materia-tag" style="background:${sc.bg};color:${sc.color}">${q.subject}</span>
+        <div class="gab-top">
+          <span class="gab-num">Q${i + 1}.</span>
+          <span class="gab-enunciado">${enunciadoResumido}</span>
+          <span class="gab-badge ${acertou ? 'ok' : 'err'}">${acertou ? '✅ Acerto' : '❌ Erro'}</span>
+        </div>
+        <div class="gab-respostas">
+          ${respostaUsuario}
+          ${respostaCorreta}
+        </div>
+      </div>`;
+  });
+  document.getElementById('gabaritoList').innerHTML = gabHTML;
+
+  goTo('result');
+}
+
+// ============================================================
+// REFAZER SIMULADO
+// ============================================================
+function restartQuiz() {
+  goTo('study');
+}
+
+// Inicialização: mostrar tela home
+document.addEventListener('DOMContentLoaded', () => {
+  goTo('home');
+});
+</script>
+</body>
+</html>
